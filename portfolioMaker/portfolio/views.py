@@ -112,6 +112,6 @@ class ProjectDetailView(GenericAPIView):
         project = self.get_object()
         project_id = project.id
         service = ProjectService()
-        service.delete_project(project)
+        service.delete_project(project=project)
         logger.info(f"Project deleted: id={project_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
