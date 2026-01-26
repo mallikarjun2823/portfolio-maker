@@ -1,12 +1,15 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+# region: Enums
 class ProficiencyLevel(models.TextChoices):
     BEGINNER = "BEGINNER", "Beginner"
     INTERMEDIATE = "INTERMEDIATE", "Intermediate"
     ADVANCED = "ADVANCED", "Advanced"
     EXPERT = "EXPERT", "Expert"
+# endregion
 
+# region: Core Models
 class Profile(models.Model):
     user = models.OneToOneField(
         User,
@@ -144,4 +147,4 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.action}"
-
+# endregion

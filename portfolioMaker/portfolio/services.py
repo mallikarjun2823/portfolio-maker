@@ -1,7 +1,7 @@
 from . import models
 from urllib.parse import urlparse
 
-
+# region: Project Service
 class ProjectService:
 
     def list_public_projects(self):
@@ -12,10 +12,22 @@ class ProjectService:
             portfolio__user=user
         )
 
+    def list_projects_for_portfolio(self, portfolio):
+        return models.Project.objects.filter(portfolio=portfolio)
+
+    def list_public_projects_for_portfolio(self, portfolio):
+        return models.Project.objects.filter(portfolio=portfolio, is_published=True)
+
     def get_project_by_id(self, project_id):
         try:
             project = models.Project.objects.get(id=project_id)
             return project
+        except models.Project.DoesNotExist:
+            return None
+
+    def get_project_by_id_and_portfolio(self, project_id, portfolio_id):
+        try:
+            return models.Project.objects.get(id=project_id, portfolio__id=portfolio_id)
         except models.Project.DoesNotExist:
             return None
 
@@ -35,4 +47,4 @@ class ProjectService:
         return project
 
     def delete_project(self, *, project):
-        project.delete()
+        project.delete()# endregion

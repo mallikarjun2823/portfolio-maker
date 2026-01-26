@@ -1,6 +1,3 @@
-
-# User Registration and Login Serializers
-
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.conf import settings
@@ -10,6 +7,7 @@ from rest_framework import serializers
 from . import models
 from urllib.parse import urlparse
 
+# region: User Authentication Serializers
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
 
@@ -64,8 +62,11 @@ class UserLoginSerializer(serializers.Serializer):
         }
         token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
         return token
+# endregion
 
+# region: Project Serializers
 class ProjectSerializer(serializers.ModelSerializer):
+    portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate_title(self, value):
         if len(value) < 5:
@@ -94,6 +95,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         model = models.Project
         fields = [
             'id',
+            'portfolio',
             'title',
             'description',
             'tech_stack',
@@ -101,10 +103,11 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_published',
             'created_at'
         ]
-        read_only_fields = ['id', 'is_published', 'created_at']
+        read_only_fields = ['id', 'portfolio', 'is_published', 'created_at']
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
+    portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
     def validate_url(self, value):
         if value:
             parsed = urlparse(value)
@@ -117,6 +120,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         model = models.Project
         fields = [
             'id',
+            'portfolio',
             'title',
             'description',
             'tech_stack',
@@ -124,7 +128,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             'is_published',
             'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'portfolio', 'created_at']
 
 class SkillSerializer(serializers.ModelSerializer):
 
@@ -143,4 +147,4 @@ class SkillSerializer(serializers.ModelSerializer):
             'proficiency_level',
             'years_of_experience'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id']# endregion
