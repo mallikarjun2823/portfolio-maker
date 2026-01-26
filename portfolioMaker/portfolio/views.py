@@ -13,7 +13,7 @@ from rest_framework import status
 from . import serializers
 from .services import ProjectService
 from .permissions import IsOwner
-
+from . import models
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -70,3 +70,45 @@ class ProjectListCreateView(GenericAPIView):
         output_serializer = self.get_serializer(project)
         logger.info(f"Project created: id={project.id} title={project.title} user_id={request.user.id}")
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)    
+
+class ProjectDetailView(GenericAPIView):
+    serializer_class = serializers.ProjectSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsOwner()]
+
+    def get_object(self):
+        service = ProjectService()
+        return service.get_project_by_id(self.kwargs["pk"])
+
+    def get(self, request, pk):
+        project = self.get_object()
+        serializer = self.get_serializer(project)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        project = self.get_object()
+
+        serializer = self.get_serializer(
+            instance=project,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+
+        service = ProjectService()
+        updated_project = service.update_project(
+            project=project,
+            data=serializer.validated_data
+        )
+
+        output_serializer = self.get_serializer(updated_project)
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk):
+        project = self.get_object()
+        service = ProjectService()
+        service.delete_project(project)
+        return Response(status=status.HTTP_204_NO_CONTENT)

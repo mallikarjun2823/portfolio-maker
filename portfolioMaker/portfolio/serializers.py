@@ -7,6 +7,8 @@ from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
 from rest_framework import serializers
+from . import models
+from urllib.parse import urlparse
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -62,10 +64,6 @@ class UserLoginSerializer(serializers.Serializer):
         }
         token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
         return token
-from rest_framework import serializers
-from . import models
-from urllib.parse import urlparse
-
 
 class ProjectSerializer(serializers.ModelSerializer):
 
@@ -105,6 +103,28 @@ class ProjectSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'is_published', 'created_at']
 
+
+class ProjectDetailSerializer(serializers.ModelSerializer):
+    def validate_url(self, value):
+        if value:
+            parsed = urlparse(value)
+            if parsed.scheme not in ["http", "https"]:
+                raise serializers.ValidationError(
+                    "Project URL must start with http or https."
+                )
+        return value
+    class Meta:
+        model = models.Project
+        fields = [
+            'id',
+            'title',
+            'description',
+            'tech_stack',
+            'project_url',
+            'is_published',
+            'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
 
 class SkillSerializer(serializers.ModelSerializer):
 
