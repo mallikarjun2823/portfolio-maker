@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from .serializers import UserRegistrationSerializer, UserLoginSerializer
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -80,12 +80,12 @@ class ProjectDetailView(GenericAPIView):
         return [IsAuthenticated(), IsOwner()]
 
     def get_object(self):
-        service = ProjectService()
-        return service.get_project_by_id(self.kwargs["pk"])
-
+        return get_object_or_404(models.Project, id=self.kwargs["pk"])
+    
     def get(self, request, pk):
         project = self.get_object()
         serializer = self.get_serializer(project)
+        logger.info(f"Project retrieved: id={project.id} title={project.title}")
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
@@ -105,10 +105,13 @@ class ProjectDetailView(GenericAPIView):
         )
 
         output_serializer = self.get_serializer(updated_project)
+        logger.info(f"Project updated: id={updated_project.id} title={updated_project.title} user_id={request.user.id}")
         return Response(output_serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         project = self.get_object()
+        project_id = project.id
         service = ProjectService()
         service.delete_project(project)
+        logger.info(f"Project deleted: id={project_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
