@@ -111,6 +111,8 @@ class ProjectDetailView(GenericAPIView):
 
     def put(self, request, portfolio_id, pk):
         project = self.get_object()
+        # enforce object-level permissions (IsOwner)
+        self.check_object_permissions(request, project)
 
         serializer = self.get_serializer(
             instance=project,
@@ -131,6 +133,7 @@ class ProjectDetailView(GenericAPIView):
 
     def delete(self, request, portfolio_id, pk):
         project = self.get_object()
+        self.check_object_permissions(request, project)
         project_id = project.id
         service = ProjectService()
         service.delete_project(project=project)
@@ -138,3 +141,6 @@ class ProjectDetailView(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 # endregion
+
+class PortfolioView(GenericAPIView):
+    pass

@@ -148,3 +148,34 @@ class SkillSerializer(serializers.ModelSerializer):
             'years_of_experience'
         ]
         read_only_fields = ['id']# endregion
+
+class PortfolioSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    
+    def validate_title(self, value):
+        if len(value) < 5:
+            raise serializers.ValidationError(
+                "Title must be at least 5 characters long."
+            )
+        return value
+
+    def validate_summary(self, value):
+        if len(value) < 10:
+            raise serializers.ValidationError(
+                "Summary must be at least 10 characters long."
+            )
+        return value
+    
+    class Meta:
+        model = models.Portfolio
+        fields = [
+            'id',
+            'user',
+            'title',
+            'summary',
+            'is_public',
+            'is_published',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
