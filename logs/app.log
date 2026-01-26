@@ -1,0 +1,2 @@
+[INFO] 2026-01-26 12:31:55 portfolioMaker.portfolio.views post:73 - Project created: id=4 title=New Project user_id=1
+[INFO] 2026-01-26 12:31:56 portfolioMaker.portfolio.views get:58 - ProjectListCreateView: Fetched 3 projects
