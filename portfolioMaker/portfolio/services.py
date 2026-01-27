@@ -85,7 +85,7 @@ class PortfolioService:
 
         # Domain invariant enforcement
         if is_public and not is_published:
-            raise ValueError("Portfolio cannot be public unless it is published")
+            raise ValidationError("Portfolio cannot be public unless it is published")
 
         portfolio = models.Portfolio.objects.create(
             user=user,
