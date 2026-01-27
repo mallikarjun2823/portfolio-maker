@@ -164,3 +164,102 @@ class ProjectAPITestCase(APITestCase):
 		url = reverse('project-detail', kwargs={'pk': 9999})
 		response = self.client.delete(url)
 		self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class PortfolioAPITestCase(APITestCase):
+	@classmethod
+	def setUpTestData(cls):
+		from django.core.management import call_command
+		call_command('seed')
+		cls.user = User.objects.get(username='testuser')
+		cls.portfolio = Portfolio.objects.get(user=cls.user)
+
+	def setUp(self):
+		self.client.login(username='testuser', password='testpass123')
+
+	def test_list_portfolios(self):
+		"""GET list of portfolios visible to the user"""
+		url = reverse('portfolio-list-create')
+		response = self.client.get(url)
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertIsInstance(response.data, list)
+
+	def test_create_portfolio_existing_user(self):
+		"""Creating a portfolio when one exists should fail (business rule)"""
+		url = reverse('portfolio-list-create')
+		data = {
+			'title': 'Another Portfolio',
+			'summary': 'Trying to create a second portfolio',
+			'is_published': False,
+			'is_public': False
+		}
+		response = self.client.post(url, data, format='json')
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+	def test_create_portfolio_new_user(self):
+		"""A new user without a portfolio can create one"""
+		new_user = User.objects.create_user(username='newuser', password='newpass123')
+		self.client.logout()
+		self.client.login(username='newuser', password='newpass123')
+		url = reverse('portfolio-list-create')
+		data = {
+			'title': 'New User Portfolio',
+			'summary': 'A portfolio for new user',
+			'is_published': True,
+			'is_public': True
+		}
+		response = self.client.post(url, data, format='json')
+		self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+		self.assertTrue(Portfolio.objects.filter(user=new_user).exists())
+
+	def test_retrieve_portfolio(self):
+		url = reverse('portfolio-detail', kwargs={'pk': self.portfolio.id})
+		response = self.client.get(url)
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertEqual(response.data['id'], self.portfolio.id)
+
+	def test_update_portfolio_owner(self):
+		url = reverse('portfolio-detail', kwargs={'pk': self.portfolio.id})
+		data = {'summary': 'Updated summary via API'}
+		response = self.client.put(url, data, format='json')
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.portfolio.refresh_from_db()
+		self.assertEqual(self.portfolio.summary, 'Updated summary via API')
+
+	def test_update_portfolio_not_owner(self):
+		other = User.objects.create_user(username='other', password='otherpass')
+		self.client.logout()
+		self.client.login(username='other', password='otherpass')
+		url = reverse('portfolio-detail', kwargs={'pk': self.portfolio.id})
+		data = {'summary': 'Malicious update'}
+		response = self.client.put(url, data, format='json')
+		self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+	def test_cannot_set_public_before_published(self):
+		# Owner tries to set is_public True while is_published False
+		self.portfolio.is_published = False
+		self.portfolio.is_public = False
+		self.portfolio.save()
+		url = reverse('portfolio-detail', kwargs={'pk': self.portfolio.id})
+		data = {'is_public': True}
+		response = self.client.put(url, data, format='json')
+		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+	def test_delete_portfolio_owner(self):
+		url = reverse('portfolio-detail', kwargs={'pk': self.portfolio.id})
+		response = self.client.delete(url)
+		self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+		self.assertFalse(Portfolio.objects.filter(id=self.portfolio.id).exists())
+
+	def test_delete_portfolio_not_owner(self):
+		# re-seed a portfolio for the owner since previous test deleted it
+		from django.core.management import call_command
+		call_command('seed')
+		port = Portfolio.objects.get(user__username='testuser')
+		other = User.objects.create_user(username='other2', password='otherpass2')
+		self.client.logout()
+		self.client.login(username='other2', password='otherpass2')
+		url = reverse('portfolio-detail', kwargs={'pk': port.id})
+		response = self.client.delete(url)
+		self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+		self.assertTrue(Portfolio.objects.filter(id=port.id).exists())

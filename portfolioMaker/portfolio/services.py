@@ -1,6 +1,7 @@
 from . import models
 from urllib.parse import urlparse
 from django.db.models import Q
+from rest_framework.exceptions import ValidationError
 # region: Project Service
 class ProjectService:
     def get_visible_projects_for_user_and_portfolio(self, user, portfolio):
@@ -77,7 +78,7 @@ class PortfolioService:
 
         # Optional but recommended: one-portfolio-per-user rule
         if models.Portfolio.objects.filter(user=user).exists():
-            raise ValueError("Portfolio already exists for this user")
+            raise ValidationError("Portfolio already exists for this user")
 
         is_published = data.get("is_published", False)
         is_public = data.get("is_public", False)
@@ -89,12 +90,26 @@ class PortfolioService:
         portfolio = models.Portfolio.objects.create(
             user=user,
             title=data["title"],
-            description=data.get("description", ""),
+            summary=data.get("summary", ""),
             is_published=is_published,
             is_public=is_public,
         )
 
         return portfolio
+
+    def update_portfolio(self, *, portfolio, data):
+        for field, value in data.items():
+            # ensure we only set fields that exist on the model
+            if hasattr(portfolio, field):
+                if field == "is_public" and value:
+                    if not data.get("is_published", portfolio.is_published):
+                        raise ValidationError("Portfolio cannot be public unless it is published")
+                setattr(portfolio, field, value)
+        portfolio.save()
+        return portfolio
+
+    def delete_portfolio(self, *, portfolio):
+        portfolio.delete()
 
 
         

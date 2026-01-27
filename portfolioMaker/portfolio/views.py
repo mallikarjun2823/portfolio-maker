@@ -128,6 +128,7 @@ class ProjectDetailView(GenericAPIView):
 
 class PortfolioView(GenericAPIView):
     serializer_class = serializers.PortfolioSerializer
+    
     def get_permissions(self):
         if self.request.method == "GET":
             return [AllowAny()]
@@ -151,3 +152,42 @@ class PortfolioView(GenericAPIView):
         )
         output_serializer = self.get_serializer(portfolio)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PortfolioDetailView(GenericAPIView):
+    serializer_class = serializers.PortfolioSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get_object(self):
+        pk = self.kwargs.get('pk')
+        return get_object_or_404(models.Portfolio, id=pk)
+
+    def get(self, request, pk):
+        portfolio = self.get_object()
+        serializer = self.get_serializer(portfolio)
+        logger.info(f"Portfolio retrieved: id={portfolio.id} user_id={portfolio.user.id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        portfolio = self.get_object()
+        self.check_object_permissions(request, portfolio)
+        serializer = self.get_serializer(instance=portfolio, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        service = PortfolioService()
+        updated = service.update_portfolio(portfolio=portfolio, data=serializer.validated_data)
+        output_serializer = self.get_serializer(updated)
+        logger.info(f"Portfolio updated: id={updated.id} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk):
+        portfolio = self.get_object()
+        self.check_object_permissions(request, portfolio)
+        portfolio_id = portfolio.id
+        service = PortfolioService()
+        service.delete_portfolio(portfolio=portfolio)
+        logger.info(f"Portfolio deleted: id={portfolio_id} user_id={request.user.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
