@@ -2,18 +2,16 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from django.contrib.auth.models import User
 from rest_framework.views import APIView
-from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny,IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from .serializers import UserRegistrationSerializer, UserLoginSerializer
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from . import serializers
-from .services import ProjectService
-from .permissions import IsOwner
+from .services import PortfolioService, ProjectService
+from .permissions import IsOwner, IsProjectOwner, IsPortfolioOwner
 from . import models
 # endregion
 
@@ -54,36 +52,26 @@ class ProjectListCreateView(GenericAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [AllowAny()]
-        return [IsAuthenticated()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
     def get(self, request, portfolio_id):
         service = ProjectService()
         portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
-
-        # If owner is requesting, show all projects; otherwise only published
-        if request.user.is_authenticated and request.user == portfolio.user:
-            projects = service.list_projects_for_portfolio(portfolio)
-        else:
-            projects = service.list_public_projects_for_portfolio(portfolio)
-
+        projects = service.get_visible_projects_for_user_and_portfolio(user=request.user, portfolio=portfolio)
         serializer = self.get_serializer(projects, many=True)
         logger.info(f"ProjectListCreateView: Fetched {len(serializer.data)} projects for portfolio={portfolio_id}")
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, portfolio_id):
-        # Only authenticated users can create; ownership is enforced
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
-        if request.user != portfolio.user:
-            return Response({'detail': 'You do not have permission to add projects to this portfolio.'}, status=status.HTTP_403_FORBIDDEN)
-
+        # Permission check: IsPortfolioOwner
+        self.check_object_permissions(request, portfolio)
         service = ProjectService()
         project = service.create_project(
             portfolio=portfolio,
             data=serializer.validated_data
         )
-
         output_serializer = self.get_serializer(project)
         logger.info(f"Project created: id={project.id} title={project.title} portfolio_id={portfolio_id} user_id={request.user.id}")
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
@@ -96,7 +84,7 @@ class ProjectDetailView(GenericAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [AllowAny()]
-        return [IsAuthenticated(), IsOwner()]
+        return [IsAuthenticated(), IsProjectOwner()]
     def get_object(self):
         # expects kwargs to contain 'portfolio_id' and 'pk'
         portfolio_id = self.kwargs.get('portfolio_id')
@@ -111,22 +99,18 @@ class ProjectDetailView(GenericAPIView):
 
     def put(self, request, portfolio_id, pk):
         project = self.get_object()
-        # enforce object-level permissions (IsOwner)
         self.check_object_permissions(request, project)
-
         serializer = self.get_serializer(
             instance=project,
             data=request.data,
             partial=True
         )
         serializer.is_valid(raise_exception=True)
-
         service = ProjectService()
         updated_project = service.update_project(
             project=project,
             data=serializer.validated_data
         )
-
         output_serializer = self.get_serializer(updated_project)
         logger.info(f"Project updated: id={updated_project.id} title={updated_project.title} user_id={request.user.id}")
         return Response(output_serializer.data, status=status.HTTP_200_OK)
@@ -143,4 +127,27 @@ class ProjectDetailView(GenericAPIView):
 # endregion
 
 class PortfolioView(GenericAPIView):
-    pass
+    serializer_class = serializers.PortfolioSerializer
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+    
+    def get(self, request):
+        service = PortfolioService()
+        portfolios = service.visible_to_user(
+            viewer=request.user
+        )
+        serializer = self.get_serializer(portfolios, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        service = PortfolioService()
+        portfolio = service.create_portfolio(
+            user=request.user,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(portfolio)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
