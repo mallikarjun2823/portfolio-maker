@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from . import serializers
 from .services import PortfolioService, ProjectService
-from .permissions import IsOwner, IsProjectOwner, IsPortfolioOwner
+from .permissions import IsProjectOwner, IsPortfolioOwner
 from . import models
 # endregion
 

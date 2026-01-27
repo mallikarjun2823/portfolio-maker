@@ -6,3 +6,8 @@ media/
 .env
 *migrations/
 logs/
+# Ignore test files and test directories
+tests/
+**/tests/
+**/tests.py
+tests.py
