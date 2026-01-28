@@ -56,7 +56,21 @@ class ProjectService:
     def delete_project(self, *, project):
         project.delete()# endregion
 
+
 class PortfolioService:
+    def log_profile_view(self, *, viewer, portfolio, ip_address=None):
+        """
+        Logs a profile view event. Viewer can be None (anonymous).
+        Only logs if viewer is not the portfolio owner.
+        """
+        if viewer.is_authenticated and viewer == portfolio.user:
+            return 
+        models.ProfileView.objects.create(
+            viewer=viewer if viewer.is_authenticated else None,
+            portfolio=portfolio,
+            ip_address=ip_address
+        )
+
     def visible_to_user(self, *, viewer):
         """
         Returns portfolios visible to the viewer.
@@ -68,7 +82,7 @@ class PortfolioService:
                 Q(is_public=True) | Q(user=viewer)
             )
         return models.Portfolio.objects.filter(is_public=True)
-    
+
     def create_portfolio(self, *, user, data):
         """
         Business rules:
