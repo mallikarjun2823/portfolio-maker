@@ -56,7 +56,6 @@ class ProjectService:
     def delete_project(self, *, project):
         project.delete()# endregion
 
-
 class PortfolioService:
     def log_profile_view(self, *, viewer, portfolio, ip_address=None):
         """
