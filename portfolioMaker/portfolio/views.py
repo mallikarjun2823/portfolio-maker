@@ -10,8 +10,8 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from . import serializers
-from .services import PortfolioService, ProjectService
-from .permissions import IsProjectOwner, IsPortfolioOwner
+from .services import PortfolioService, ProjectService, SkillService, EducationService, SocialLinkService, DocumentService
+from .permissions import IsPortfolioOwner
 from . import models
 # endregion
 
@@ -154,7 +154,7 @@ class ProjectDetailView(GenericAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [AllowAny()]
-        return [IsAuthenticated(), IsProjectOwner()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
     def get_object(self):
         # expects kwargs to contain 'portfolio_id' and 'pk'
         portfolio_id = self.kwargs.get('portfolio_id')
@@ -169,7 +169,8 @@ class ProjectDetailView(GenericAPIView):
 
     def put(self, request, portfolio_id, pk):
         project = self.get_object()
-        self.check_object_permissions(request, project)
+        portfolio = project.portfolio
+        self.check_object_permissions(request, portfolio)
         serializer = self.get_serializer(
             instance=project,
             data=request.data,
@@ -187,11 +188,332 @@ class ProjectDetailView(GenericAPIView):
 
     def delete(self, request, portfolio_id, pk):
         project = self.get_object()
-        self.check_object_permissions(request, project)
+        portfolio = project.portfolio
+        self.check_object_permissions(request, portfolio)
         project_id = project.id
         service = ProjectService()
         service.delete_project(project=project)
         logger.info(f"Project deleted: id={project_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+# endregion
+
+# region: Skill Views
+class SkillListCreateView(GenericAPIView):
+    serializer_class = serializers.SkillSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get(self, request, portfolio_id):
+        service = SkillService()
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        skills = service.get_visible_skills_for_user_and_portfolio(user=request.user, portfolio=portfolio)
+        serializer = self.get_serializer(skills, many=True)
+        logger.info(f"SkillListCreateView: Fetched {len(serializer.data)} skills for portfolio={portfolio_id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, portfolio_id):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        self.check_object_permissions(request, portfolio)
+        service = SkillService()
+        skill = service.create_skill(
+            portfolio=portfolio,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(skill)
+        logger.info(f"Skill created: id={skill.id} name={skill.name} portfolio_id={portfolio_id} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+class SkillDetailView(GenericAPIView):
+    serializer_class = serializers.SkillSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get_object(self):
+        portfolio_id = self.kwargs.get('portfolio_id')
+        pk = self.kwargs.get('pk')
+        return get_object_or_404(models.Skill, id=pk, portfolio__id=portfolio_id)
+
+    def get(self, request, portfolio_id, pk):
+        skill = self.get_object()
+        serializer = self.get_serializer(skill)
+        logger.info(f"Skill retrieved: id={skill.id} name={skill.name} portfolio_id={portfolio_id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, portfolio_id, pk):
+        skill = self.get_object()
+        portfolio = skill.portfolio
+        self.check_object_permissions(request, portfolio)
+        serializer = self.get_serializer(
+            instance=skill,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        service = SkillService()
+        updated_skill = service.update_skill(
+            skill=skill,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(updated_skill)
+        logger.info(f"Skill updated: id={updated_skill.id} name={updated_skill.name} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, portfolio_id, pk):
+        skill = self.get_object()
+        portfolio = skill.portfolio
+        self.check_object_permissions(request, portfolio)
+        skill_id = skill.id
+        service = SkillService()
+        service.delete_skill(skill=skill)
+        logger.info(f"Skill deleted: id={skill_id} user_id={request.user.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+# endregion
+
+# region: Education Views
+class EducationListCreateView(GenericAPIView):
+    serializer_class = serializers.EducationSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get(self, request, portfolio_id):
+        service = EducationService()
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        education = service.get_visible_education_for_user_and_portfolio(user=request.user, portfolio=portfolio)
+        serializer = self.get_serializer(education, many=True)
+        logger.info(f"EducationListCreateView: Fetched {len(serializer.data)} education for portfolio={portfolio_id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, portfolio_id):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        self.check_object_permissions(request, portfolio)
+        service = EducationService()
+        education = service.create_education(
+            portfolio=portfolio,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(education)
+        logger.info(f"Education created: id={education.id} institution={education.institution} portfolio_id={portfolio_id} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+class EducationDetailView(GenericAPIView):
+    serializer_class = serializers.EducationSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get_object(self):
+        portfolio_id = self.kwargs.get('portfolio_id')
+        pk = self.kwargs.get('pk')
+        return get_object_or_404(models.Education, id=pk, portfolio__id=portfolio_id)
+
+    def get(self, request, portfolio_id, pk):
+        education = self.get_object()
+        serializer = self.get_serializer(education)
+        logger.info(f"Education retrieved: id={education.id} institution={education.institution} portfolio_id={portfolio_id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, portfolio_id, pk):
+        education = self.get_object()
+        portfolio = education.portfolio
+        self.check_object_permissions(request, portfolio)
+        serializer = self.get_serializer(
+            instance=education,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        service = EducationService()
+        updated_education = service.update_education(
+            education=education,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(updated_education)
+        logger.info(f"Education updated: id={updated_education.id} institution={updated_education.institution} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, portfolio_id, pk):
+        education = self.get_object()
+        portfolio = education.portfolio
+        self.check_object_permissions(request, portfolio)
+        education_id = education.id
+        service = EducationService()
+        service.delete_education(education=education)
+        logger.info(f"Education deleted: id={education_id} user_id={request.user.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+# endregion
+
+# region: SocialLink Views
+class SocialLinkListCreateView(GenericAPIView):
+    serializer_class = serializers.SocialLinkSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get(self, request, portfolio_id):
+        service = SocialLinkService()
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        social_links = service.get_visible_social_links_for_user_and_portfolio(user=request.user, portfolio=portfolio)
+        serializer = self.get_serializer(social_links, many=True)
+        logger.info(f"SocialLinkListCreateView: Fetched {len(serializer.data)} social links for portfolio={portfolio_id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, portfolio_id):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        self.check_object_permissions(request, portfolio)
+        service = SocialLinkService()
+        social_link = service.create_social_link(
+            portfolio=portfolio,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(social_link)
+        logger.info(f"SocialLink created: id={social_link.id} platform={social_link.platform} portfolio_id={portfolio_id} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+class SocialLinkDetailView(GenericAPIView):
+    serializer_class = serializers.SocialLinkSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get_object(self):
+        portfolio_id = self.kwargs.get('portfolio_id')
+        pk = self.kwargs.get('pk')
+        return get_object_or_404(models.SocialLink, id=pk, portfolio__id=portfolio_id)
+
+    def get(self, request, portfolio_id, pk):
+        social_link = self.get_object()
+        serializer = self.get_serializer(social_link)
+        logger.info(f"SocialLink retrieved: id={social_link.id} platform={social_link.platform} portfolio_id={portfolio_id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, portfolio_id, pk):
+        social_link = self.get_object()
+        portfolio = social_link.portfolio
+        self.check_object_permissions(request, portfolio)
+        serializer = self.get_serializer(
+            instance=social_link,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        service = SocialLinkService()
+        updated_social_link = service.update_social_link(
+            social_link=social_link,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(updated_social_link)
+        logger.info(f"SocialLink updated: id={updated_social_link.id} platform={updated_social_link.platform} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, portfolio_id, pk):
+        social_link = self.get_object()
+        portfolio = social_link.portfolio
+        self.check_object_permissions(request, portfolio)
+        social_link_id = social_link.id
+        service = SocialLinkService()
+        service.delete_social_link(social_link=social_link)
+        logger.info(f"SocialLink deleted: id={social_link_id} user_id={request.user.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+# endregion
+
+# region: Document Views
+class DocumentListCreateView(GenericAPIView):
+    serializer_class = serializers.DocumentSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get(self, request, portfolio_id):
+        service = DocumentService()
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        documents = service.get_visible_documents_for_user_and_portfolio(user=request.user, portfolio=portfolio)
+        serializer = self.get_serializer(documents, many=True)
+        logger.info(f"DocumentListCreateView: Fetched {len(serializer.data)} documents for portfolio={portfolio_id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, portfolio_id):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        self.check_object_permissions(request, portfolio)
+        service = DocumentService()
+        document = service.create_document(
+            portfolio=portfolio,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(document)
+        logger.info(f"Document created: id={document.id} doc_type={document.doc_type} portfolio_id={portfolio_id} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+class DocumentDetailView(GenericAPIView):
+    serializer_class = serializers.DocumentSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsPortfolioOwner()]
+
+    def get_object(self):
+        portfolio_id = self.kwargs.get('portfolio_id')
+        pk = self.kwargs.get('pk')
+        return get_object_or_404(models.Document, id=pk, portfolio__id=portfolio_id)
+
+    def get(self, request, portfolio_id, pk):
+        document = self.get_object()
+        serializer = self.get_serializer(document)
+        logger.info(f"Document retrieved: id={document.id} doc_type={document.doc_type} portfolio_id={portfolio_id}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, portfolio_id, pk):
+        document = self.get_object()
+        portfolio = document.portfolio
+        self.check_object_permissions(request, portfolio)
+        serializer = self.get_serializer(
+            instance=document,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        service = DocumentService()
+        updated_document = service.update_document(
+            document=document,
+            data=serializer.validated_data
+        )
+        output_serializer = self.get_serializer(updated_document)
+        logger.info(f"Document updated: id={updated_document.id} doc_type={updated_document.doc_type} user_id={request.user.id}")
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, portfolio_id, pk):
+        document = self.get_object()
+        portfolio = document.portfolio
+        self.check_object_permissions(request, portfolio)
+        document_id = document.id
+        service = DocumentService()
+        service.delete_document(document=document)
+        logger.info(f"Document deleted: id={document_id} user_id={request.user.id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion

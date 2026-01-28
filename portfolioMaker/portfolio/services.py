@@ -54,7 +54,141 @@ class ProjectService:
         return project
 
     def delete_project(self, *, project):
-        project.delete()# endregion
+        project.delete()
+# endregion
+
+# region: Skill Service
+class SkillService:
+    def get_visible_skills_for_user_and_portfolio(self, user, portfolio):
+        if user.is_authenticated and user == portfolio.user:
+            return self.list_skills_for_portfolio(portfolio)
+        else:
+            return self.list_public_skills_for_portfolio(portfolio)
+
+    def list_skills_for_portfolio(self, portfolio):
+        return models.Skill.objects.filter(portfolio=portfolio)
+
+    def list_public_skills_for_portfolio(self, portfolio):
+        # Assuming skills are always visible if portfolio is public, but since no is_public on skill, return all for now
+        return self.list_skills_for_portfolio(portfolio)
+
+    def create_skill(self, *, portfolio, data):
+        return models.Skill.objects.create(
+            portfolio=portfolio,
+            name=data["name"],
+            proficiency_level=data["proficiency_level"],
+            years_of_experience=data["years_of_experience"],
+            skill_certification=data.get("skill_certification")
+        )
+
+    def update_skill(self, *, skill, data):
+        for field, value in data.items():
+            setattr(skill, field, value)
+        skill.save()
+        return skill
+
+    def delete_skill(self, *, skill):
+        skill.delete()
+# endregion
+
+# region: Education Service
+class EducationService:
+    def get_visible_education_for_user_and_portfolio(self, user, portfolio):
+        if user.is_authenticated and user == portfolio.user:
+            return self.list_education_for_portfolio(portfolio)
+        else:
+            return self.list_public_education_for_portfolio(portfolio)
+
+    def list_education_for_portfolio(self, portfolio):
+        return models.Education.objects.filter(portfolio=portfolio)
+
+    def list_public_education_for_portfolio(self, portfolio):
+        return self.list_education_for_portfolio(portfolio)
+
+    def create_education(self, *, portfolio, data):
+        return models.Education.objects.create(
+            portfolio=portfolio,
+            institution=data["institution"],
+            degree=data["degree"],
+            start_year=data["start_year"],
+            end_year=data.get("end_year")
+        )
+
+    def update_education(self, *, education, data):
+        for field, value in data.items():
+            setattr(education, field, value)
+        education.save()
+        return education
+
+    def delete_education(self, *, education):
+        education.delete()
+# endregion
+
+# region: SocialLink Service
+class SocialLinkService:
+    def get_visible_social_links_for_user_and_portfolio(self, user, portfolio):
+        if user.is_authenticated and user == portfolio.user:
+            return self.list_social_links_for_portfolio(portfolio)
+        else:
+            return self.list_public_social_links_for_portfolio(portfolio)
+
+    def list_social_links_for_portfolio(self, portfolio):
+        return models.SocialLink.objects.filter(portfolio=portfolio)
+
+    def list_public_social_links_for_portfolio(self, portfolio):
+        return self.list_social_links_for_portfolio(portfolio)
+
+    def create_social_link(self, *, portfolio, data):
+        return models.SocialLink.objects.create(
+            portfolio=portfolio,
+            platform=data["platform"],
+            url=data["url"]
+        )
+
+    def update_social_link(self, *, social_link, data):
+        for field, value in data.items():
+            setattr(social_link, field, value)
+        social_link.save()
+        return social_link
+
+    def delete_social_link(self, *, social_link):
+        social_link.delete()
+# endregion
+
+# region: Document Service
+class DocumentService:
+    def get_visible_documents_for_user_and_portfolio(self, user, portfolio):
+        if user.is_authenticated and user == portfolio.user:
+            return self.list_documents_for_portfolio(portfolio)
+        else:
+            return self.list_public_documents_for_portfolio(portfolio)
+
+    def list_documents_for_portfolio(self, portfolio):
+        return models.Document.objects.filter(portfolio=portfolio)
+
+    def list_public_documents_for_portfolio(self, portfolio):
+        return models.Document.objects.filter(portfolio=portfolio, is_public=True)
+
+    def create_document(self, *, portfolio, data):
+        # Business rule: only one resume per portfolio
+        if data.get("doc_type") == models.Document.DocumentType.RESUME and models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
+            raise ValidationError("Only one resume allowed per portfolio")
+        return models.Document.objects.create(
+            portfolio=portfolio,
+            file=data["file"],
+            doc_type=data["doc_type"],
+            is_public=data.get("is_public", False)
+        )
+
+    def update_document(self, *, document, data):
+        for field, value in data.items():
+            setattr(document, field, value)
+        document.save()
+        return document
+
+    def delete_document(self, *, document):
+        document.delete()
+# endregion
 
 class PortfolioService:
     def log_profile_view(self, *, viewer, portfolio, ip_address=None):
