@@ -14,6 +14,23 @@ from . import serializers
 from .services import PortfolioService, ProjectService, SkillService, EducationService, SocialLinkService, DocumentService
 from .permissions import IsPortfolioOwner
 from . import models
+from django.db import connection
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def debug_portfolio_sql_count(request):
+    """
+    Development helper: returns portfolios visible to the requester and the number of SQL queries executed.
+    Only enabled in DEBUG.
+    """
+    service = PortfolioService()
+    portfolios = service.visible_to_user(viewer=request.user)
+    serializer = serializers.PortfolioSerializer(portfolios, many=True)
+    return Response({
+        'query_count': len(connection.queries),
+        'data': serializer.data
+    }, status=status.HTTP_200_OK)
 # endregion
 
 # region: User Authentication Views
@@ -54,12 +71,19 @@ class PortfolioView(GenericAPIView):
         if self.request.method == "GET":
             return [AllowAny()]
         return [IsAuthenticated()]
+
+    def get_queryset(self):
+        """Return portfolios visible to the requesting user.
+
+        This is used by DRF renderers (e.g., Browsable API) which call
+        `get_queryset()` when building filter forms and context.
+        """
+        service = PortfolioService()
+        return service.visible_to_user(viewer=self.request.user)
     
     def get(self, request):
-        service = PortfolioService()
-        portfolios = service.visible_to_user(
-            viewer=request.user
-        )
+        # Use the same queryset as get_queryset to keep behavior consistent
+        portfolios = self.get_queryset()
         serializer = self.get_serializer(portfolios, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     

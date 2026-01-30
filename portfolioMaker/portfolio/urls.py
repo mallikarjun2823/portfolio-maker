@@ -31,6 +31,8 @@ urlpatterns = [
     path('portfolio/<int:portfolio_id>/versions/<int:version_number>/', views.PortfolioVersionDetailView.as_view(), name='portfolio-version-detail'),
     path('portfolio/<int:portfolio_id>/versions/<int:version_number>/revert/', views.revert_portfolio_version, name='portfolio-version-revert'),
 
+    # Dev debug: returns SQL query count for portfolio listing
+    path('debug/queries/', views.debug_portfolio_sql_count, name='debug-queries'),
 
     # Portfolio CRUD
     path('portfolios/', views.PortfolioView.as_view(), name='portfolio-list-create'),

@@ -38,11 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'portfolioMaker.portfolio',
+    'debug_toolbar',
     'rest_framework'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -160,3 +162,9 @@ LOGGING = {
 import os
 if not os.path.exists(BASE_DIR / 'logs'):
     os.makedirs(BASE_DIR / 'logs')
+
+# Django Debug Toolbar (development only)
+INTERNAL_IPS = ['127.0.0.1']
+
+# Note: install with `pip install django-debug-toolbar` and runserver to see the toolbar
+# For secure environments, enable the toolbar only on internal networks
