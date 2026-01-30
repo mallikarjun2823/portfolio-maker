@@ -4,6 +4,7 @@ logger = logging.getLogger(__name__)
 
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 from .serializers import UserRegistrationSerializer, UserLoginSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import GenericAPIView
@@ -517,3 +518,74 @@ class DocumentDetailView(GenericAPIView):
         logger.info(f"Document deleted: id={document_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion
+
+# region: Portfolio Versioning Views
+class PortfolioVersionListView(GenericAPIView):
+    serializer_class = serializers.PortfolioVersionSerializer
+    permission_classes = [IsAuthenticated, IsPortfolioOwner]
+
+    def get(self, request, portfolio_id):
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        self.check_object_permissions(request, portfolio)
+        service = PortfolioService()
+        versions = service.list_versions(portfolio=portfolio)
+        serializer = self.get_serializer(versions, many=True)
+        logger.info(f"Portfolio versions listed: portfolio_id={portfolio_id} count={len(serializer.data)}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, portfolio_id):
+        """Create a manual snapshot/draft"""
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        self.check_object_permissions(request, portfolio)
+        service = PortfolioService()
+        change_note = request.data.get('change_note', '')
+        is_draft = request.data.get('is_draft', False)
+        version = service.create_version_snapshot(
+            portfolio=portfolio,
+            user=request.user,
+            change_note=change_note,
+            is_draft=is_draft
+        )
+        serializer = self.get_serializer(version)
+        logger.info(f"Portfolio version created: portfolio_id={portfolio_id} version={version.version_number}")
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class PortfolioVersionDetailView(GenericAPIView):
+    serializer_class = serializers.PortfolioVersionSerializer
+    permission_classes = [IsAuthenticated, IsPortfolioOwner]
+
+    def get(self, request, portfolio_id, version_number):
+        portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+        self.check_object_permissions(request, portfolio)
+        service = PortfolioService()
+        version = service.get_version(portfolio=portfolio, version_number=version_number)
+        if not version:
+            return Response({"error": "Version not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.get_serializer(version)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsPortfolioOwner])
+def revert_portfolio_version(request, portfolio_id, version_number):
+    """Revert portfolio to a specific version"""
+    portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
+    # Check permissions manually for function-based view
+    if portfolio.user != request.user:
+        return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+    
+    service = PortfolioService()
+    try:
+        reverted_portfolio = service.revert_to_version(
+            portfolio=portfolio,
+            version_number=version_number,
+            user=request.user
+        )
+        serializer = serializers.PortfolioSerializer(reverted_portfolio)
+        logger.info(f"Portfolio reverted to version: portfolio_id={portfolio_id} version={version_number}")
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+# endregion
+
+
+

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 class ProficiencyLevel(models.TextChoices):
     BEGINNER = "BEGINNER", "Beginner"
@@ -27,6 +28,11 @@ class UserProfile(models.Model):
     def __str__(self):
         return self.user.username
 
+class VisibilityChoice(models.TextChoices):
+    PRIVATE = "PRIVATE", "Private"
+    RECRUITER_ONLY = "RECRUITER_ONLY", "Recruiter Only (Link Share)"
+    PUBLIC = "PUBLIC", "Public"
+
 class Portfolio(models.Model):
     user = models.OneToOneField(
         User,
@@ -37,8 +43,16 @@ class Portfolio(models.Model):
     title = models.CharField(max_length=150)
     summary = models.TextField()
 
+    # Legacy field for backward compatibility
     is_public = models.BooleanField(default=False)
     is_published = models.BooleanField(default=False)
+    
+    # New visibility system
+    visibility = models.CharField(
+        max_length=20,
+        choices=VisibilityChoice.choices,
+        default=VisibilityChoice.PRIVATE
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -180,3 +194,41 @@ class Document(models.Model):
 
     def __str__(self):
         return f"{self.doc_type} - {self.portfolio.user.username}"
+
+
+class PortfolioVersion(models.Model):
+    """Immutable version snapshot of a portfolio"""
+    portfolio = models.ForeignKey(
+        Portfolio,
+        on_delete=models.CASCADE,
+        related_name="versions"
+    )
+    
+    version_number = models.PositiveIntegerField()
+    
+    # Snapshot data
+    title = models.CharField(max_length=150)
+    summary = models.TextField()
+    visibility = models.CharField(max_length=20)
+    is_published = models.BooleanField()
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="portfolio_versions_created"
+    )
+    change_note = models.TextField(blank=True)
+    is_draft = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ['-version_number']
+        unique_together = ['portfolio', 'version_number']
+    
+    def __str__(self):
+        return f"{self.portfolio.user.username} - v{self.version_number}"
+
+
+

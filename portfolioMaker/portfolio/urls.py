@@ -26,6 +26,12 @@ urlpatterns = [
     path('portfolio/<int:portfolio_id>/documents/', views.DocumentListCreateView.as_view(), name='document-list-create'),
     path('portfolio/<int:portfolio_id>/documents/<int:pk>/', views.DocumentDetailView.as_view(), name='document-detail'),
 
+    # Portfolio versioning routes
+    path('portfolio/<int:portfolio_id>/versions/', views.PortfolioVersionListView.as_view(), name='portfolio-version-list'),
+    path('portfolio/<int:portfolio_id>/versions/<int:version_number>/', views.PortfolioVersionDetailView.as_view(), name='portfolio-version-detail'),
+    path('portfolio/<int:portfolio_id>/versions/<int:version_number>/revert/', views.revert_portfolio_version, name='portfolio-version-revert'),
+
+
     # Portfolio CRUD
     path('portfolios/', views.PortfolioView.as_view(), name='portfolio-list-create'),
     path('portfolios/<int:pk>/', views.PortfolioDetailView.as_view(), name='portfolio-detail'),

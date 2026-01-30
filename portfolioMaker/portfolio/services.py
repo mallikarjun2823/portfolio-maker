@@ -1,6 +1,6 @@
 from . import models
 from urllib.parse import urlparse
-from django.db.models import Q
+from django.db.models import Q, Max
 from rest_framework.exceptions import ValidationError
 # region: Project Service
 class ProjectService:
@@ -253,10 +253,86 @@ class PortfolioService:
                         raise ValidationError("Portfolio cannot be public unless it is published")
                 setattr(portfolio, field, value)
         portfolio.save()
+        
+        # Auto-create version snapshot on update
+        if portfolio.is_published:
+            self.create_version_snapshot(
+                portfolio=portfolio,
+                user=portfolio.user,
+                change_note="Auto-snapshot on update"
+            )
+        
         return portfolio
 
     def delete_portfolio(self, *, portfolio):
         portfolio.delete()
+
+    # === Portfolio Versioning ===#
+    def create_version_snapshot(self, *, portfolio, user, change_note="", is_draft=False):
+        """Create an immutable version snapshot of the portfolio"""
+        # Get next version number
+        max_version = models.PortfolioVersion.objects.filter(portfolio=portfolio).aggregate(
+            Max('version_number')
+        )['version_number__max']
+        next_version = (max_version or 0) + 1
+        
+        version = models.PortfolioVersion.objects.create(
+            portfolio=portfolio,
+            version_number=next_version,
+            title=portfolio.title,
+            summary=portfolio.summary,
+            visibility=portfolio.visibility,
+            is_published=portfolio.is_published,
+            created_by=user,
+            change_note=change_note,
+            is_draft=is_draft
+        )
+        return version
+    
+    def list_versions(self, *, portfolio):
+        """List all versions of a portfolio"""
+        return models.PortfolioVersion.objects.filter(portfolio=portfolio)
+    
+    def get_version(self, *, portfolio, version_number):
+        """Get a specific version"""
+        try:
+            return models.PortfolioVersion.objects.get(
+                portfolio=portfolio,
+                version_number=version_number
+            )
+        except models.PortfolioVersion.DoesNotExist:
+            return None
+    
+    def revert_to_version(self, *, portfolio, version_number, user):
+        """Revert portfolio to a previous version"""
+        version = self.get_version(portfolio=portfolio, version_number=version_number)
+        if not version:
+            raise ValidationError("Version not found")
+        
+        # Create a snapshot of current state before reverting
+        self.create_version_snapshot(
+            portfolio=portfolio,
+            user=user,
+            change_note=f"Auto-snapshot before reverting to v{version_number}"
+        )
+        
+        # Apply version data
+        portfolio.title = version.title
+        portfolio.summary = version.summary
+        portfolio.visibility = version.visibility
+        portfolio.is_published = version.is_published
+        portfolio.save()
+        
+        # Create new version for the revert
+        self.create_version_snapshot(
+            portfolio=portfolio,
+            user=user,
+            change_note=f"Reverted to v{version_number}"
+        )
+        
+        return portfolio
+
+
 
 
         

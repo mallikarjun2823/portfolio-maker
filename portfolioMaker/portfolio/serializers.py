@@ -248,6 +248,30 @@ class DocumentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'uploaded_at']
 # endregion
 
+# region: Portfolio Versioning Serializers
+class PortfolioVersionSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    
+    class Meta:
+        model = models.PortfolioVersion
+        fields = [
+            'id',
+            'version_number',
+            'title',
+            'summary',
+            'visibility',
+            'is_published',
+            'created_at',
+            'created_by',
+            'created_by_username',
+            'change_note',
+            'is_draft'
+        ]
+        read_only_fields = ['id', 'version_number', 'created_at', 'created_by', 'created_by_username']
+# endregion
+
+
+
 class PortfolioSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
     
@@ -274,6 +298,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
             'summary',
             'is_public',
             'is_published',
+            'visibility',
             'created_at',
             'updated_at'
         ]
