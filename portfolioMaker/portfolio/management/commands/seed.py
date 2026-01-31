@@ -1,45 +1,148 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from portfolioMaker.portfolio.models import Portfolio, Project
+from django.core.files.base import ContentFile
+from portfolioMaker.portfolio import models
 
 class Command(BaseCommand):
-    help = 'Seed database with test users, portfolios, and projects.'
+    help = 'Seed database with test users, portfolios, projects, skills, education, social links, documents and versions.'
 
     def handle(self, *args, **options):
-        # Create test user
-        user, created = User.objects.get_or_create(username='testuser', defaults={'email': 'test@example.com'})
-        if created:
-            user.set_password('testpass123')
-            user.save()
-            self.stdout.write(self.style.SUCCESS('Created test user'))
-        else:
-            self.stdout.write(self.style.WARNING('Test user already exists'))
+        """Create 5 users each with a portfolio and related objects.
+        Idempotent: re-running won't create duplicates for same username/title types.
+        """
+        created_count = 0
 
-        # Create portfolio for user
-        portfolio, created = Portfolio.objects.get_or_create(user=user, defaults={
-            'title': 'Test Portfolio',
-            'summary': 'A test portfolio',
-            'is_public': True,
-            'is_published': True
-        })
-        if created:
-            self.stdout.write(self.style.SUCCESS('Created test portfolio'))
-        else:
-            self.stdout.write(self.style.WARNING('Test portfolio already exists'))
+        for idx in range(1, 6):
+            username = f'seeduser{idx}'
+            email = f'{username}@example.test'
+            password = 'SeedPass123!'
 
-        # Create projects
-        for i in range(1, 4):
-            project, created = Project.objects.get_or_create(
-                portfolio=portfolio,
-                title=f'Test Project {i}',
+            user, user_created = User.objects.get_or_create(username=username, defaults={'email': email})
+            if user_created:
+                user.set_password(password)
+                user.save()
+                self.stdout.write(self.style.SUCCESS(f'Created user: {username}'))
+                created_count += 1
+            else:
+                self.stdout.write(self.style.WARNING(f'User already exists: {username}'))
+
+            # Ensure UserProfile exists
+            profile, prof_created = models.UserProfile.objects.get_or_create(user=user)
+            if prof_created:
+                self.stdout.write(self.style.SUCCESS(f'Created profile for {username}'))
+
+            # Portfolio
+            title = f'{username} Portfolio'
+            portfolio, port_created = models.Portfolio.objects.get_or_create(
+                user=user,
                 defaults={
-                    'description': f'This is test project {i}',
-                    'tech_stack': 'Django, DRF',
-                    'project_url': f'https://example.com/project{i}',
-                    'is_published': True
+                    'title': title,
+                    'summary': f'Sample portfolio for {username}',
+                    'is_published': True,
+                    'is_public': True if idx % 2 == 1 else False,
+                    'visibility': models.VisibilityChoice.PUBLIC if idx % 2 == 1 else models.VisibilityChoice.PRIVATE
                 }
             )
-            if created:
-                self.stdout.write(self.style.SUCCESS(f'Created project {i}'))
+            if port_created:
+                self.stdout.write(self.style.SUCCESS(f'Created portfolio for {username}'))
             else:
-                self.stdout.write(self.style.WARNING(f'Project {i} already exists'))
+                self.stdout.write(self.style.WARNING(f'Portfolio already exists for {username}'))
+
+            # Projects (3)
+            for i in range(1, 4):
+                proj_title = f'{username} Project {i}'
+                project, proj_created = models.Project.objects.get_or_create(
+                    portfolio=portfolio,
+                    title=proj_title,
+                    defaults={
+                        'description': f'Description for {proj_title}',
+                        'tech_stack': 'Django, DRF, PostgreSQL',
+                        'project_url': f'https://example.com/{username}/project{i}',
+                        'is_published': True if i != 3 else False
+                    }
+                )
+                if proj_created:
+                    self.stdout.write(self.style.SUCCESS(f'  Created project: {proj_title}'))
+
+            # Skills (3)
+            proficiency = [models.ProficiencyLevel.BEGINNER, models.ProficiencyLevel.INTERMEDIATE, models.ProficiencyLevel.ADVANCED]
+            for i in range(3):
+                skill_name = f'{username} Skill {i+1}'
+                skill, skill_created = models.Skill.objects.get_or_create(
+                    portfolio=portfolio,
+                    name=skill_name,
+                    defaults={
+                        'proficiency_level': proficiency[i % len(proficiency)],
+                        'years_of_experience': i + 1
+                    }
+                )
+                if skill_created:
+                    # attach a small certification file for the first skill
+                    if i == 0:
+                        content = ContentFile(f'Certificate for {skill_name}'.encode('utf-8'))
+                        content_name = f'certificate_{username}_{i+1}.txt'
+                        skill.skill_certification.save(content_name, content, save=True)
+                    self.stdout.write(self.style.SUCCESS(f'  Created skill: {skill_name}'))
+
+            # Education (2)
+            edu_data = [
+                ('Example University', 'BSc Computer Science', 2014, 2018),
+                ('Example Institute', 'MSc Computer Science', 2019, 2021)
+            ]
+            for institution, degree, start_year, end_year in edu_data:
+                edu, edu_created = models.Education.objects.get_or_create(
+                    portfolio=portfolio,
+                    institution=institution,
+                    degree=degree,
+                    defaults={
+                        'start_year': start_year,
+                        'end_year': end_year
+                    }
+                )
+                if edu_created:
+                    self.stdout.write(self.style.SUCCESS(f'  Created education: {institution} - {degree}'))
+
+            # Social Links (2)
+            socials = [
+                ('GitHub', f'https://github.com/{username}'),
+                ('LinkedIn', f'https://linkedin.com/in/{username}')
+            ]
+            for platform, url in socials:
+                sl, sl_created = models.SocialLink.objects.get_or_create(
+                    portfolio=portfolio,
+                    platform=platform,
+                    defaults={'url': url}
+                )
+                if sl_created:
+                    self.stdout.write(self.style.SUCCESS(f'  Created social link: {platform}'))
+
+            # Documents: resume + certificate
+            # Resume: only one per portfolio
+            if not models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
+                resume_content = ContentFile(f'Resume for {username}\nExperience: 3 years'.encode('utf-8'))
+                resume = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME, is_public=False)
+                resume.file.save(f'resume_{username}.txt', resume_content, save=True)
+                self.stdout.write(self.style.SUCCESS(f'  Created resume for {username}'))
+
+            # Certificate doc
+            cert_content = ContentFile(f'Certificate for {username}'.encode('utf-8'))
+            cert = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.CERTIFICATE, is_public=False)
+            cert.file.save(f'certificate_{username}.txt', cert_content, save=True)
+            self.stdout.write(self.style.SUCCESS(f'  Created certificate for {username}'))
+
+            # Create an initial version snapshot
+            if not models.PortfolioVersion.objects.filter(portfolio=portfolio, version_number=1).exists():
+                models.PortfolioVersion.objects.create(
+                    portfolio=portfolio,
+                    version_number=1,
+                    title=portfolio.title,
+                    summary=portfolio.summary,
+                    visibility=portfolio.visibility,
+                    is_published=portfolio.is_published,
+                    created_by=user,
+                    change_note='Initial seed version',
+                    is_draft=False
+                )
+                self.stdout.write(self.style.SUCCESS(f'  Created initial version for {username}'))
+
+        self.stdout.write(self.style.SUCCESS(f'Seeding complete. Created/verified users: {created_count}'))

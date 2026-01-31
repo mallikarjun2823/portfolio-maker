@@ -139,15 +139,138 @@ class SkillSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_proficiency_level(self, value):
+        if value not in dict(models.ProficiencyLevel.choices):
+            raise serializers.ValidationError(
+                "Invalid proficiency level."
+            )
+        return value
+
     class Meta:
         model = models.Skill
         fields = [
             'id',
             'name',
             'proficiency_level',
-            'years_of_experience'
+            'years_of_experience',
+            'skill_certification'
         ]
-        read_only_fields = ['id']# endregion
+        read_only_fields = ['id']
+# endregion
+
+# region: Education Serializer
+class EducationSerializer(serializers.ModelSerializer):
+
+    def validate_start_year(self, value):
+        if value < 1900 or value > datetime.now().year + 10:
+            raise serializers.ValidationError(
+                "Invalid start year."
+            )
+        return value
+
+    def validate_end_year(self, value):
+        if value and (value < 1900 or value > datetime.now().year + 10):
+            raise serializers.ValidationError(
+                "Invalid end year."
+            )
+        return value
+
+    def validate(self, data):
+        start_year = data.get('start_year')
+        end_year = data.get('end_year')
+        if end_year and start_year and end_year < start_year:
+            raise serializers.ValidationError(
+                "End year cannot be before start year."
+            )
+        return data
+
+    class Meta:
+        model = models.Education
+        fields = [
+            'id',
+            'institution',
+            'degree',
+            'start_year',
+            'end_year'
+        ]
+        read_only_fields = ['id']
+# endregion
+
+# region: SocialLink Serializer
+class SocialLinkSerializer(serializers.ModelSerializer):
+
+    def validate_url(self, value):
+        parsed = urlparse(value)
+        if parsed.scheme not in ["http", "https"]:
+            raise serializers.ValidationError(
+                "URL must start with http or https."
+            )
+        return value
+
+    class Meta:
+        model = models.SocialLink
+        fields = [
+            'id',
+            'platform',
+            'url'
+        ]
+        read_only_fields = ['id']
+# endregion
+
+# region: Document Serializer
+class DocumentSerializer(serializers.ModelSerializer):
+
+    def validate_doc_type(self, value):
+        if value not in dict(models.Document.DocumentType.choices):
+            raise serializers.ValidationError(
+                "Invalid document type."
+            )
+        return value
+
+    def validate(self, data):
+        portfolio = self.context.get('portfolio')
+        if portfolio and data.get('doc_type') == models.Document.DocumentType.RESUME:
+            if models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
+                raise serializers.ValidationError(
+                    "Only one resume allowed per portfolio."
+                )
+        return data
+
+    class Meta:
+        model = models.Document
+        fields = [
+            'id',
+            'file',
+            'doc_type',
+            'is_public',
+            'uploaded_at'
+        ]
+        read_only_fields = ['id', 'uploaded_at']
+# endregion
+
+# region: Portfolio Versioning Serializers
+class PortfolioVersionSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    
+    class Meta:
+        model = models.PortfolioVersion
+        fields = [
+            'id',
+            'version_number',
+            'title',
+            'summary',
+            'visibility',
+            'is_published',
+            'created_at',
+            'created_by',
+            'created_by_username',
+            'change_note',
+            'is_draft'
+        ]
+        read_only_fields = ['id', 'version_number', 'created_at', 'created_by', 'created_by_username']
+# endregion
+
+
 
 class PortfolioSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -175,6 +298,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
             'summary',
             'is_public',
             'is_published',
+            'visibility',
             'created_at',
             'updated_at'
         ]
