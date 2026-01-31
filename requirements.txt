@@ -1,0 +1,22 @@
+# Core framework
+Django==4.2.10
+djangorestframework==3.14.0
+
+# Authentication & permissions helpers
+django-cors-headers==4.3.1
+
+# File & image handling
+Pillow==10.2.0
+
+# Environment management
+python-dotenv==1.0.1
+
+# Database (PostgreSQL – recommended for prod)
+psycopg2-binary==2.9.9
+
+# Testing
+pytest==8.0.0
+pytest-django==4.8.0
+
+# Utilities
+python-dateutil==2.8.2

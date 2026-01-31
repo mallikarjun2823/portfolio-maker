@@ -2,6 +2,9 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 from portfolioMaker.portfolio import models
+from django.utils import timezone
+from datetime import timedelta
+import random
 
 class Command(BaseCommand):
     help = 'Seed database with test users, portfolios, projects, skills, education, social links, documents and versions.'
@@ -144,5 +147,25 @@ class Command(BaseCommand):
                     is_draft=False
                 )
                 self.stdout.write(self.style.SUCCESS(f'  Created initial version for {username}'))
+
+            # Create profile views for analytics testing
+            # Mix of authenticated viewers and anonymous IP-based views
+            other_users = list(User.objects.exclude(id=user.id))
+            num_views = idx * 3  # vary per user
+            for v in range(1, num_views + 1):
+                if other_users and v % 3 != 0:
+                    viewer = random.choice(other_users)
+                    ip = None
+                else:
+                    viewer = None
+                    ip = f"192.0.2.{(idx * 10 + v) % 254}"
+                viewed_at = timezone.now() - timedelta(days=random.randint(0, 14), hours=random.randint(0,23))
+                models.ProfileView.objects.create(
+                    viewer=viewer,
+                    portfolio=portfolio,
+                    viewed_at=viewed_at,
+                    ip_address=ip
+                )
+            self.stdout.write(self.style.SUCCESS(f'  Created {num_views} profile views for {username}'))
 
         self.stdout.write(self.style.SUCCESS(f'Seeding complete. Created/verified users: {created_count}'))
