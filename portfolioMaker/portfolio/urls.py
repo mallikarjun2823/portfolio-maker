@@ -37,5 +37,7 @@ urlpatterns = [
     # Portfolio CRUD
     path('portfolios/', views.PortfolioView.as_view(), name='portfolio-list-create'),
     path('portfolios/<int:pk>/', views.PortfolioDetailView.as_view(), name='portfolio-detail'),
+    # Analytics endpoint
+    path('analytics/', views.AnalyticsView.as_view(), name='analytics'),
 ]
 # endregion

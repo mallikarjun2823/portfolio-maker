@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
-from .serializers import UserRegistrationSerializer, UserLoginSerializer
+from .serializers import UserRegistrationSerializer, UserLoginSerializer, AnalyticsRequestSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
@@ -139,6 +139,29 @@ class PortfolioDetailView(GenericAPIView):
         service.delete_portfolio(portfolio=portfolio)
         logger.info(f"Portfolio deleted: id={portfolio_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AnalyticsView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = AnalyticsRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        params = serializer.validated_data
+        metric = params['metrics'][0]
+        service = PortfolioService()
+        result = service.get_time_series(
+            start_date=params['start_date'],
+            end_date=params['end_date'],
+            group_by=params['group_by'],
+            metric=metric,
+            entity_type=params['entity_type'],
+            entity_ids=params.get('entity_ids'),
+            limit=params.get('limit'),
+            offset=params.get('offset')
+        )
+        return Response(result, status=status.HTTP_200_OK)
 
 # region: Project Views
 class ProjectListCreateView(GenericAPIView):

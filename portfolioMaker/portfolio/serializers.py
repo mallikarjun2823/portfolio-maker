@@ -4,6 +4,7 @@ from django.conf import settings
 import jwt
 from datetime import datetime, timedelta
 from rest_framework import serializers
+from django.utils import timezone
 from . import models
 from urllib.parse import urlparse
 
@@ -303,3 +304,45 @@ class PortfolioSerializer(serializers.ModelSerializer):
             'updated_at'
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+
+# region: Analytics Request Serializer
+class AnalyticsRequestSerializer(serializers.Serializer):
+    start_date = serializers.DateField(required=False)
+    end_date = serializers.DateField(required=False)
+    group_by = serializers.ChoiceField(choices=[('day', 'day'), ('week', 'week'), ('month', 'month')], required=False)
+    entity_type = serializers.ChoiceField(choices=[('portfolio', 'portfolio'), ('user', 'user')], required=False)
+    metrics = serializers.ListField(child=serializers.CharField(), required=False)
+    entity_ids = serializers.ListField(child=serializers.IntegerField(), required=False)
+    limit = serializers.IntegerField(required=False, min_value=1)
+    offset = serializers.IntegerField(required=False, min_value=0)
+
+    def validate(self, attrs):
+        today = timezone.now().date()
+        if 'end_date' not in attrs:
+            attrs['end_date'] = today
+        if 'start_date' not in attrs:
+            attrs['start_date'] = today - timezone.timedelta(days=30)
+        if 'group_by' not in attrs:
+            attrs['group_by'] = 'day'
+        if 'entity_type' not in attrs:
+            attrs['entity_type'] = 'portfolio'
+        if 'metrics' not in attrs or not attrs.get('metrics'):
+            attrs['metrics'] = ['count']
+
+        if attrs['start_date'] > attrs['end_date']:
+            raise serializers.ValidationError("start_date must be <= end_date")
+
+        supported_metrics = {'count', 'unique_count'}
+        for m in attrs['metrics']:
+            if m not in supported_metrics:
+                raise serializers.ValidationError({ 'metrics': f"unsupported metric '{m}'" })
+
+        if attrs['group_by'] not in ('day', 'week', 'month'):
+            raise serializers.ValidationError({ 'group_by': "unsupported group_by; choose day|week|month" })
+
+        if attrs['entity_type'] not in ('portfolio', 'user'):
+            raise serializers.ValidationError({ 'entity_type': "unsupported entity_type" })
+
+        return attrs
+# endregion

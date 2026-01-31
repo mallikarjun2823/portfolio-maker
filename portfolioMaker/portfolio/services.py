@@ -2,6 +2,9 @@ from . import models
 from urllib.parse import urlparse
 from django.db.models import Q, Max
 from rest_framework.exceptions import ValidationError
+from django.db import connection
+from django.utils import timezone
+from datetime import datetime
 # region: Project Service
 class ProjectService:
     def get_visible_projects_for_user_and_portfolio(self, user, portfolio):
@@ -331,6 +334,94 @@ class PortfolioService:
         )
         
         return portfolio
+
+    # === Analytics (read-only, raw SQL) ===
+    SUPPORTED_GROUPS = ('day', 'week', 'month')
+    SUPPORTED_METRICS = ('count', 'unique_count')
+
+    def _group_expr(self, group_by, vendor):
+        if vendor == 'sqlite':
+            if group_by == 'day':
+                return "substr(pv.viewed_at, 1, 10)"
+            if group_by == 'week':
+                return "date(pv.viewed_at, 'weekday 0', '-6 days')"
+            return "substr(pv.viewed_at, 1, 7)"
+        elif vendor == 'postgresql':
+            if group_by == 'day':
+                return "to_char(date_trunc('day', pv.viewed_at), 'YYYY-MM-DD')"
+            if group_by == 'week':
+                return "to_char(date_trunc('week', pv.viewed_at), 'IYYY-IW')"
+            return "to_char(date_trunc('month', pv.viewed_at), 'YYYY-MM')"
+        else:
+            if group_by == 'day':
+                return "DATE_FORMAT(pv.viewed_at, '%Y-%m-%d')"
+            if group_by == 'week':
+                return "DATE_FORMAT(pv.viewed_at, '%Y-%u')"
+            return "DATE_FORMAT(pv.viewed_at, '%Y-%m')"
+
+    def build_time_series_query(self, start_date, end_date, group_by='day', metric='count', entity_type='portfolio', entity_ids=None, limit=None, offset=None):
+        if group_by not in self.SUPPORTED_GROUPS:
+            raise ValueError('unsupported group_by')
+        if metric not in self.SUPPORTED_METRICS:
+            raise ValueError('unsupported metric')
+        if entity_type not in ('portfolio', 'user'):
+            raise ValueError('unsupported entity_type')
+
+        vendor = connection.vendor
+        group_label_expr = self._group_expr(group_by, vendor)
+
+        if metric == 'count':
+            metric_expr = 'COUNT(*)'
+        else:
+            metric_expr = "COUNT(DISTINCT COALESCE(pv.viewer_id, pv.ip_address))"
+
+        sql = f"""
+SELECT
+  {group_label_expr} AS group_label,
+  {metric_expr} AS value
+FROM portfolio_profileview pv
+WHERE pv.viewed_at BETWEEN %s AND %s
+"""
+
+        params = [start_date.isoformat(), (end_date.isoformat() if hasattr(end_date, 'isoformat') else str(end_date))]
+
+        if entity_type == 'portfolio' and entity_ids:
+            placeholders = ','.join(['%s'] * len(entity_ids))
+            sql += f" AND pv.portfolio_id IN ({placeholders})\n"
+            params.extend(entity_ids)
+        elif entity_type == 'user' and entity_ids:
+            placeholders = ','.join(['%s'] * len(entity_ids))
+            sql += f" AND pv.portfolio_id IN (SELECT id FROM portfolio_portfolio WHERE user_id IN ({placeholders}))\n"
+            params.extend(entity_ids)
+
+        sql += "GROUP BY group_label ORDER BY group_label ASC\n"
+
+        if limit:
+            sql += "LIMIT %s\n"
+            params.append(limit)
+        if offset:
+            sql += "OFFSET %s\n"
+            params.append(offset)
+
+        return sql, params
+
+    def execute_query(self, sql, params):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            cols = [c[0] for c in cursor.description]
+            rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
+        return rows
+
+    def get_time_series(self, *, start_date, end_date, group_by='day', metric='count', entity_type='portfolio', entity_ids=None, limit=None, offset=None):
+        sql, params = self.build_time_series_query(start_date=start_date, end_date=end_date, group_by=group_by, metric=metric, entity_type=entity_type, entity_ids=entity_ids, limit=limit, offset=offset)
+        rows = self.execute_query(sql, params)
+        labels = [r['group_label'] for r in rows]
+        values = [int(r['value']) for r in rows]
+        return {
+            'labels': labels,
+            'values': values,
+            'rows': rows,
+        }
 
 
 

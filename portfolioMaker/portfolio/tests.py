@@ -5,6 +5,7 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import Project, Portfolio, Skill, Education, SocialLink, Document, PortfolioVersion
+from datetime import date
 
 class BaseSeededTestCase(APITestCase):
     @classmethod
@@ -265,3 +266,24 @@ class DebugTests(BaseSeededTestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn('query_count', resp.data)
         self.assertIsInstance(resp.data['query_count'], int)
+
+
+class AnalyticsTests(BaseSeededTestCase):
+    def test_analytics_endpoint_wide_range(self):
+        url = reverse('analytics')
+        data = {
+            'start_date': '2000-01-01',
+            'end_date': str(date.today()),
+            'group_by': 'day',
+            'metrics': ['count']
+        }
+        resp = self.client.post(url, data, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, f"Analytics endpoint failed: {getattr(resp, 'data', None)}")
+        # Expect structure: labels, values, rows
+        self.assertIn('labels', resp.data)
+        self.assertIn('values', resp.data)
+        self.assertIn('rows', resp.data)
+        self.assertIsInstance(resp.data['labels'], list)
+        self.assertIsInstance(resp.data['values'], list)
+        self.assertIsInstance(resp.data['rows'], list)
+        # Rows may be empty depending on time bucketing; ensure structure is correct.
