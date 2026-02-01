@@ -29,7 +29,38 @@ const Login = () => {
     setLoading(true);
     setError(null);
 
-    return (
+    try {
+      if (isLogin) {
+        await authService.login({
+          username: formData.username,
+          password: formData.password,
+        });
+        navigate('/');
+      } else {
+        await authService.register({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+        });
+        await authService.login({
+          username: formData.username,
+          password: formData.password,
+        });
+        navigate('/');
+      }
+    } catch (err) {
+      console.error('Auth error:', err);
+      const errorMsg = err.response?.data?.message || 
+                       err.response?.data?.detail ||
+                       Object.values(err.response?.data || {}).flat().join(', ') ||
+                       `${isLogin ? 'Login' : 'Registration'} failed. Please try again.`;
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
       <div className="container py-5">
         <div className="row justify-content-center">
           <div className="col-md-6">
@@ -80,38 +111,6 @@ const Login = () => {
         </div>
       </div>
     );
-          </div>
-
-          <Button
-            type="submit"
-            fullWidth
-            disabled={loading}
-            className={styles.submitButton}
-          >
-            {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
-          </Button>
-        </form>
-
-        <div className={styles.divider}>
-          <span className={styles.dividerText}>OR</span>
-        </div>
-
-        <p className={styles.toggleText}>
-          {isLogin ? "Don't have an account? " : 'Already have an account? '}
-          <span
-            className={styles.toggleLink}
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError(null);
-              setFormData({ username: '', email: '', password: '' });
-            }}
-          >
-            {isLogin ? 'Sign Up' : 'Sign In'}
-          </span>
-        </p>
-      </div>
-    </div>
-  );
 };
 
 export default Login;
