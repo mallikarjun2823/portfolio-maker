@@ -25,11 +25,11 @@
 - **POST** `http://127.0.0.1:8000/portfolios/` — create (auth)
   - Body example:
     ```json
-    { "title": "My Portfolio", "summary": "Short summary", "is_published": true, "is_public": true, "visibility": "PUBLIC" }
+    { "title": "My Portfolio", "summary": "Short summary", "status": "PUBLISHED" }
     ```
 - **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolios/<pk>/` — retrieve / update / delete (owner checks apply)
 
-Notes: only one portfolio per user; cannot set `is_public` true if `is_published` is false.
+Notes: only one portfolio per user; public portfolios are represented by `status: "PUBLISHED"`.
 
 ---
 
@@ -39,7 +39,7 @@ Notes: only one portfolio per user; cannot set `is_public` true if `is_published
 -- **POST** `http://127.0.0.1:8000/portfolio/<portfolio_id>/projects/` — create (owner only)
   - Body example:
     ```json
-    { "title": "Project X", "description": "Details...", "tech_stack": "Django, React", "project_url": "https://example.com", "is_published": true }
+    { "title": "Project X", "description": "Details...", "tech_stack": "Django, React", "project_url": "https://example.com", "status": "PUBLISHED" }
     ```
   - Validation: `title` >= 5 chars; `description` >= 10 chars; `project_url` must start with http/https.
 -- **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolio/<portfolio_id>/projects/<pk>/`
@@ -119,7 +119,7 @@ curl -X POST -H "Authorization: Bearer <token>" -F "doc_type=resume" -F "file=@r
   ```
 - Create portfolio:
   ```bash
-  curl -X POST -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"title":"X","summary":"Y","is_published":true,"is_public":true}' http://127.0.0.1:8000/portfolios/
+  curl -X POST -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"title":"X","summary":"Y","status":"PUBLISHED"}' http://127.0.0.1:8000/portfolios/
   ```
 
 ---
