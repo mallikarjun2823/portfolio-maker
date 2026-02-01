@@ -193,6 +193,7 @@ class DocumentService:
         document.delete()
 # endregion
 
+# region: Portfolio Service
 class PortfolioService:
     def log_profile_view(self, *, viewer, portfolio, ip_address=None):
         """
@@ -422,8 +423,4 @@ WHERE pv.viewed_at BETWEEN %s AND %s
             'values': values,
             'rows': rows,
         }
-
-
-
-
-        
+# endregion

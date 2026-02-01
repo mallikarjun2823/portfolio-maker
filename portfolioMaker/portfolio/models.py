@@ -1,14 +1,23 @@
+# region: Imports
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+# endregion
 
+# region: Choices and Enums
 class ProficiencyLevel(models.TextChoices):
     BEGINNER = "BEGINNER", "Beginner"
     INTERMEDIATE = "INTERMEDIATE", "Intermediate"
     ADVANCED = "ADVANCED", "Advanced"
     EXPERT = "EXPERT", "Expert"
 
+class VisibilityChoice(models.TextChoices):
+    PRIVATE = "PRIVATE", "Private"
+    RECRUITER_ONLY = "RECRUITER_ONLY", "Recruiter Only (Link Share)"
+    PUBLIC = "PUBLIC", "Public"
+# endregion
 
+# region: User Profile Model
 class UserProfile(models.Model):
     user = models.OneToOneField(
         User,
@@ -27,12 +36,9 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.user.username
+# endregion
 
-class VisibilityChoice(models.TextChoices):
-    PRIVATE = "PRIVATE", "Private"
-    RECRUITER_ONLY = "RECRUITER_ONLY", "Recruiter Only (Link Share)"
-    PUBLIC = "PUBLIC", "Public"
-
+# region: Portfolio Model
 class Portfolio(models.Model):
     user = models.OneToOneField(
         User,
@@ -59,7 +65,9 @@ class Portfolio(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - Portfolio"
+# endregion
 
+# region: Project Model
 class Project(models.Model):
     portfolio = models.ForeignKey(
         Portfolio,
@@ -77,7 +85,9 @@ class Project(models.Model):
 
     def __str__(self):
         return self.title
+# endregion
 
+# region: Skill Model
 class Skill(models.Model):
     portfolio = models.ForeignKey(
         Portfolio,
@@ -96,8 +106,9 @@ class Skill(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.proficiency_level})"
+# endregion
 
-
+# region: Education Model
 class Education(models.Model):
     portfolio = models.ForeignKey(
         Portfolio,
@@ -112,7 +123,9 @@ class Education(models.Model):
 
     def __str__(self):
         return f"{self.institution} - {self.degree}"
+# endregion
 
+# region: Social Link Model
 class SocialLink(models.Model):
     portfolio = models.ForeignKey(
         Portfolio,
@@ -125,7 +138,9 @@ class SocialLink(models.Model):
 
     def __str__(self):
         return self.platform
+# endregion
 
+# region: Profile View Model
 class ProfileView(models.Model):
     viewer = models.ForeignKey(
         User,
@@ -146,8 +161,9 @@ class ProfileView(models.Model):
 
     def __str__(self):
         return f"View on {self.portfolio.user.username}"
+# endregion
 
-
+# region: Activity Log Model
 class ActivityLog(models.Model):
     ACTION_CHOICES = [
         ("CREATE", "Create"),
@@ -170,7 +186,9 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.action}"
+# endregion
 
+# region: Document Model
 class Document(models.Model):
     class DocumentType(models.TextChoices):
         RESUME = "resume", "Resume"
@@ -194,8 +212,9 @@ class Document(models.Model):
 
     def __str__(self):
         return f"{self.doc_type} - {self.portfolio.user.username}"
+# endregion
 
-
+# region: Portfolio Version Model
 class PortfolioVersion(models.Model):
     """Immutable version snapshot of a portfolio"""
     portfolio = models.ForeignKey(
@@ -229,6 +248,5 @@ class PortfolioVersion(models.Model):
     
     def __str__(self):
         return f"{self.portfolio.user.username} - v{self.version_number}"
-
-
+# endregion
 

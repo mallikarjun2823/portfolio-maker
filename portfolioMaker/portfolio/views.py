@@ -60,10 +60,9 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         logger.warning(f"Login failed for username: {request.data.get('username')}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 # endregion
 
-
+# region: Portfolio Views
 class PortfolioView(GenericAPIView):
     serializer_class = serializers.PortfolioSerializer
     
@@ -139,8 +138,9 @@ class PortfolioDetailView(GenericAPIView):
         service.delete_portfolio(portfolio=portfolio)
         logger.info(f"Portfolio deleted: id={portfolio_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
+# endregion
 
-
+# region: Analytics Views
 class AnalyticsView(APIView):
     permission_classes = [AllowAny]
 
@@ -162,8 +162,9 @@ class AnalyticsView(APIView):
             offset=params.get('offset')
         )
         return Response(result, status=status.HTTP_200_OK)
+# endregion
 
-# region: Project Views
+# region: Social Link Views
 class ProjectListCreateView(GenericAPIView):
     serializer_class = serializers.ProjectSerializer
 
@@ -326,7 +327,7 @@ class SkillDetailView(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion
 
-# region: Education Views
+# region: Social Link Views
 class EducationListCreateView(GenericAPIView):
     serializer_class = serializers.EducationSerializer
 
@@ -406,7 +407,7 @@ class EducationDetailView(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion
 
-# region: SocialLink Views
+# region: Document Views
 class SocialLinkListCreateView(GenericAPIView):
     serializer_class = serializers.SocialLinkSerializer
 
@@ -486,7 +487,7 @@ class SocialLinkDetailView(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion
 
-# region: Document Views
+# region: Portfolio Versioning Views
 class DocumentListCreateView(GenericAPIView):
     serializer_class = serializers.DocumentSerializer
 
