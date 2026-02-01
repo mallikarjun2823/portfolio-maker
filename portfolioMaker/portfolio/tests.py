@@ -53,13 +53,13 @@ class BaseSeededTestCase(APITestCase):
 
 class AuthTests(APITestCase):
     def test_register_and_login(self):
-        # Register
-        url = reverse('register')
+        # Register (auth endpoint)
+        url = reverse('auth-register')
         resp = self.client.post(url, {'username': 'authuser', 'email': 'a@example.test', 'password': 'AuthPass123!'})
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
 
         # Login
-        url = reverse('login')
+        url = reverse('auth-login')
         resp = self.client.post(url, {'username': 'authuser', 'password': 'AuthPass123!'})
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertIn('token', resp.data)
@@ -306,7 +306,7 @@ class AuthenticationAdvancedTests(APITestCase):
     """Test JWT authentication edge cases and validation"""
     
     def test_register_validation_edge_cases(self):
-        url = reverse('register')
+        url = reverse('auth-register')
         
         # Test password too short
         resp = self.client.post(url, {
@@ -340,7 +340,7 @@ class AuthenticationAdvancedTests(APITestCase):
         self.assertEqual(payload['username'], 'validuser')
 
     def test_login_edge_cases(self):
-        url = reverse('login')
+        url = reverse('auth-login')
         user = User.objects.create_user('loginuser', 'login@test.com', 'loginpass123')
         
         # Test wrong password
@@ -1056,8 +1056,8 @@ class IntegrationTests(APITestCase):
     
     def test_complete_portfolio_workflow(self):
         """Test complete portfolio creation and management workflow"""
-        # Register user
-        resp = self.client.post(reverse('register'), {
+        # Register user (auth endpoint)
+        resp = self.client.post(reverse('auth-register'), {
             'username': 'workflow',
             'email': 'workflow@test.com',
             'password': 'workflow123'
