@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.conf import settings
-import jwt
+import jwt  # PyJWT library
 from datetime import datetime, timedelta
 from rest_framework import serializers
 from django.utils import timezone

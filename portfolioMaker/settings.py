@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'portfolioMaker.portfolio',
     'debug_toolbar',
     'rest_framework'
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -165,6 +167,14 @@ if not os.path.exists(BASE_DIR / 'logs'):
 
 # Django Debug Toolbar (development only)
 INTERNAL_IPS = ['127.0.0.1']
+
+# CORS settings for frontend
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 # Note: install with `pip install django-debug-toolbar` and runserver to see the toolbar
 # For secure environments, enable the toolbar only on internal networks

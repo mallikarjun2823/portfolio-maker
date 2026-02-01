@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../../api/services';
-import styles from './Layout.module.css';
 
 const Layout = ({ children }) => {
   const navigate = useNavigate();
@@ -17,70 +16,64 @@ const Layout = ({ children }) => {
   const isActive = (path) => location.pathname === path;
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: '🏠' },
-    { path: '/projects', label: 'Projects', icon: '📂' },
-    { path: '/portfolios', label: 'Portfolios', icon: '🗂️' },
-    { path: '/analytics', label: 'Analytics', icon: '📊' },
-    { path: '/resume', label: 'Resume', icon: '📄' },
-    { path: '/activity', label: 'Activity', icon: '🕒' },
+    { path: '/', label: 'Dashboard' },
+    { path: '/projects', label: 'Projects' },
+    { path: '/portfolios', label: 'Portfolios' },
+    { path: '/analytics', label: 'Analytics' },
+    { path: '/resume', label: 'Resume' },
+    { path: '/activity', label: 'Activity' },
   ];
 
   return (
-    <div className={styles.layout}>
-      <nav className={styles.navbar}>
-        <div className={styles.navContainer}>
-          <Link to="/" className={styles.navBrand}>
-            <span className={styles.navLogo}>📁</span>
-            <span className={styles.navTitle}>Portfolio Maker</span>
-          </Link>
+    <div>
+      <nav className="navbar navbar-expand-lg navbar-light bg-light">
+        <div className="container-fluid">
+          <Link to="/" className="navbar-brand">Portfolio Maker</Link>
 
-          <div className={styles.navLinks}>
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`${styles.navLink} ${isActive(item.path) ? styles.active : ''}`}
+          <div className="d-flex align-items-center">
+            <div className="me-3 d-none d-lg-block">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`nav-link d-inline-block px-2 ${isActive(item.path) ? 'fw-bold' : ''}`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="d-flex align-items-center">
+              {username && <span className="me-2 text-muted">{username}</span>}
+              <button onClick={handleLogout} className="btn btn-outline-secondary btn-sm">Logout</button>
+              <button
+                className="btn btn-link d-lg-none ms-2"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
-                <span>{item.icon}</span> {item.label}
-              </Link>
-            ))}
+                {mobileMenuOpen ? 'Close' : 'Menu'}
+              </button>
+            </div>
           </div>
-
-          <div className={styles.userSection}>
-            {username && <span className={styles.username}>👤 {username}</span>}
-            <button onClick={handleLogout} className={styles.logoutButton}>
-              Logout
-            </button>
-          </div>
-
-          <button
-            className={styles.mobileMenuButton}
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? '✕' : '☰'}
-          </button>
         </div>
 
         {mobileMenuOpen && (
-          <div className={styles.mobileNav}>
+          <div className="bg-light px-3 py-2 d-lg-none">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`${styles.navLink} ${isActive(item.path) ? styles.active : ''}`}
+                className={`d-block py-1 ${isActive(item.path) ? 'fw-bold' : ''}`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <span>{item.icon}</span> {item.label}
+                {item.label}
               </Link>
             ))}
-            <button onClick={handleLogout} className={styles.logoutButton} style={{ marginTop: '8px' }}>
-              Logout
-            </button>
+            <button onClick={handleLogout} className="btn btn-outline-secondary btn-sm mt-2">Logout</button>
           </div>
         )}
       </nav>
 
-      <main className={styles.main}>{children}</main>
+      <main className="container py-4">{children}</main>
     </div>
   );
 };

@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { portfolioService } from '../../api/services';
-import Card from '../../components/Card/Card';
-import Button from '../../components/Button/Button';
-import LoadingSkeleton from '../../components/LoadingSkeleton/LoadingSkeleton';
-import EmptyState from '../../components/EmptyState/EmptyState';
-import styles from './Portfolios.module.css';
 
 const Portfolios = () => {
   const navigate = useNavigate();
@@ -48,56 +43,68 @@ const Portfolios = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: 24 }}><LoadingSkeleton type="title" count={1} /></div>;
+  if (loading) return <div className="p-4 text-center"><div className="spinner-border" role="status"><span className="visually-hidden">Loading...</span></div></div>;
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <h1>Portfolios</h1>
-        <Button onClick={() => window.scrollTo(0, document.body.scrollHeight)}>Create New</Button>
+    <div className="container py-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h1 className="h4 mb-0">Portfolios</h1>
+        <button className="btn btn-outline-primary" onClick={() => window.scrollTo(0, document.body.scrollHeight)}>Create New</button>
       </div>
 
       {portfolios.length === 0 ? (
-        <EmptyState
-          icon="📁"
-          title="No portfolios yet"
-          description="Create your first portfolio to get started."
-        />
+        <div className="card">
+          <div className="card-body">
+            <h5 className="card-title">No portfolios yet</h5>
+            <p className="card-text text-muted">Create your first portfolio to get started.</p>
+            <button className="btn btn-primary" onClick={() => window.scrollTo(0, document.body.scrollHeight)}>Create Portfolio</button>
+          </div>
+        </div>
       ) : (
-        <div style={{ display: 'grid', gap: 12 }}>
+        <div className="row g-3">
           {portfolios.map(p => (
-            <Card key={p.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 style={{ margin: 0 }}>{p.title}</h3>
-                  <div style={{ color: '#6b7280' }}>{p.summary}</div>
-                </div>
-                <div>
-                  <Button onClick={() => navigate('/')}>Open</Button>
+            <div className="col-md-6" key={p.id}>
+              <div className="card">
+                <div className="card-body d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5 className="mb-1">{p.title}</h5>
+                    <div className="text-muted">{p.summary}</div>
+                  </div>
+                  <div>
+                    <button className="btn btn-sm btn-outline-primary" onClick={() => navigate('/')}>Open</button>
+                  </div>
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
 
-      <div style={{ marginTop: 32 }}>
-        <Card>
-          <h2>Create Portfolio</h2>
-          {error && <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>}
-          <form onSubmit={handleCreate} style={{ display: 'grid', gap: 8 }}>
-            <input name="title" placeholder="Title" value={form.title} onChange={handleChange} required />
-            <textarea name="summary" placeholder="Short summary" value={form.summary} onChange={handleChange} rows={4} />
-            <select name="status" value={form.status} onChange={handleChange}>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-            </select>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create Portfolio'}</Button>
-              <Button type="button" onClick={() => setForm({ title: '', summary: '', status: 'draft' })}>Reset</Button>
-            </div>
-          </form>
-        </Card>
+      <div className="mt-4">
+        <div className="card">
+          <div className="card-body">
+            <h5>Create Portfolio</h5>
+            {error && <div className="alert alert-danger">{error}</div>}
+            <form onSubmit={handleCreate} className="row g-3">
+              <div className="col-12">
+                <input name="title" className="form-control" placeholder="Title" value={form.title} onChange={handleChange} required />
+              </div>
+              <div className="col-12">
+                <textarea name="summary" className="form-control" placeholder="Short summary" value={form.summary} onChange={handleChange} rows={4} />
+              </div>
+              <div className="col-md-4">
+                <select name="status" className="form-select" value={form.status} onChange={handleChange}>
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                </select>
+              </div>
+              <div className="col-12 d-flex gap-2">
+                <button type="submit" className="btn btn-primary" disabled={creating}>{creating ? 'Creating…' : 'Create Portfolio'}</button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setForm({ title: '', summary: '', status: 'draft' })}>Reset</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   );

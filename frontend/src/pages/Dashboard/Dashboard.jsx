@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { portfolioService, projectService, skillService } from '../../api/services';
-import Card from '../../components/Card/Card';
-import Badge from '../../components/Badge/Badge';
-import Button from '../../components/Button/Button';
-import LoadingSkeleton from '../../components/LoadingSkeleton/LoadingSkeleton';
-import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
-import styles from './Dashboard.module.css';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -63,32 +57,32 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className={styles.dashboard}>
-        <div className={styles.header}>
-          <LoadingSkeleton type="title" count={1} />
-          <LoadingSkeleton type="text" count={1} />
+      <div className="text-center py-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
         </div>
-        <LoadingSkeleton type="card" count={3} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={styles.dashboard}>
-        <ErrorMessage title="Dashboard Error" message={error} />
+      <div className="container py-4">
+        <div className="alert alert-danger" role="alert">
+          <strong>Dashboard Error:</strong> {error}
+        </div>
       </div>
     );
   }
 
   if (!portfolio) {
     return (
-      <div className={styles.dashboard}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>Welcome to Portfolio Maker</h1>
-          <p className={styles.subtitle}>You don't have a portfolio yet. Create one to get started.</p>
-          <div style={{ marginTop: 18 }}>
-            <Button onClick={() => navigate('/portfolios')}>Create Portfolio</Button>
+      <div className="container py-4">
+        <div className="card">
+          <div className="card-body">
+            <h1 className="card-title">Welcome to Portfolio Maker</h1>
+            <p className="card-text">You don't have a portfolio yet. Create one to get started.</p>
+            <button className="btn btn-primary" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
           </div>
         </div>
       </div>
@@ -97,25 +91,21 @@ const Dashboard = () => {
 
   const actions = [
     {
-      icon: '📂',
       title: 'View Projects',
       description: 'Explore and manage your portfolio projects',
       path: '/projects',
     },
     {
-      icon: '📊',
       title: 'View Analytics',
       description: 'Insights and metrics about your portfolio',
       path: '/analytics',
     },
     {
-      icon: '📄',
       title: 'Resume Preview',
       description: 'Generate and preview your resume',
       path: '/resume',
     },
     {
-      icon: '🕒',
       title: 'Activity Timeline',
       description: 'View your portfolio history and changes',
       path: '/activity',
@@ -123,51 +113,55 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className={styles.dashboard}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>{portfolio.title}</h1>
-        <p className={styles.subtitle}>{portfolio.summary}</p>
+    <div className="container py-4">
+      <div className="mb-4">
+        <h1 className="h3">{portfolio.title}</h1>
+        <p className="text-muted">{portfolio.summary}</p>
       </div>
 
-      {/* Status Section */}
-      <div className={styles.statusSection}>
-        <Card>
-          <div className={styles.statusCard}>
-            <div className={styles.statusInfo}>
-              <span className={styles.statusLabel}>Portfolio Status</span>
-              <div className={styles.statusValue}>
-                <Badge status={portfolio.status} />
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-body">
+              <h6 className="card-subtitle mb-2 text-muted">Portfolio Status</h6>
+              <span className={`badge ${portfolio.status === 'published' ? 'bg-success' : 'bg-secondary'}`}>{portfolio.status}</span>
+              <div className="text-muted mt-2">Last updated: {formatDate(portfolio.updated_at)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-6">
+          <div className="row">
+            <div className="col-6">
+              <div className="card text-center">
+                <div className="card-body">
+                  <div className="h4 mb-0">{stats.projects}</div>
+                  <small className="text-muted">Projects</small>
+                </div>
               </div>
-              <div className={styles.timestamp}>
-                Last updated: {formatDate(portfolio.updated_at)}
+            </div>
+            <div className="col-6">
+              <div className="card text-center">
+                <div className="card-body">
+                  <div className="h4 mb-0">{stats.skills}</div>
+                  <small className="text-muted">Skills</small>
+                </div>
               </div>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className={styles.statsGrid}>
-        <Card className={styles.statCard}>
-          <div className={styles.statValue}>{stats.projects}</div>
-          <div className={styles.statLabel}>Projects</div>
-        </Card>
-        <Card className={styles.statCard}>
-          <div className={styles.statValue}>{stats.skills}</div>
-          <div className={styles.statLabel}>Skills</div>
-        </Card>
-      </div>
-
-      {/* Action Cards */}
-      <div className={styles.actionsGrid}>
+      <div className="row">
         {actions.map((action, index) => (
-          <Card key={index} onClick={() => navigate(action.path)}>
-            <div className={styles.actionCard}>
-              <div className={styles.actionIcon}>{action.icon}</div>
-              <h3 className={styles.actionTitle}>{action.title}</h3>
-              <p className={styles.actionDescription}>{action.description}</p>
+          <div className="col-md-3 mb-3" key={index}>
+            <div className="card h-100" onClick={() => navigate(action.path)} style={{ cursor: 'pointer' }}>
+              <div className="card-body">
+                <h5 className="card-title">{action.title}</h5>
+                <p className="card-text text-muted">{action.description}</p>
+              </div>
             </div>
-          </Card>
+          </div>
         ))}
       </div>
     </div>
