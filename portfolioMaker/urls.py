@@ -15,16 +15,20 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
 from django.conf import settings
 
+# Root URL configuration uses an API-first prefix and delegates app routes to the
+# `portfolio` app. This keeps URL surface predictable and consistent for clients.
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('portfolio/', include('portfolioMaker.portfolio.urls')),
-    path('api/auth/', include('rest_framework.urls')),
-    # JWT endpoints are handled in portfolio app
+    path('api/', include('portfolioMaker.portfolio.urls')),
+    path('api/auth/', include('rest_framework.urls')),  # browsable-auth endpoints
 ]
 
 if settings.DEBUG:
     import debug_toolbar
+
+    # Keep debug toolbar under a clearly marked debug path and only enabled
+    # in DEBUG mode so it cannot be triggered in production.
     urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
