@@ -11,3 +11,8 @@ tests/
 **/tests/
 **/tests.py
 tests.py
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.env
