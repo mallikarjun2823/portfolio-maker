@@ -43,7 +43,6 @@ class Command(BaseCommand):
                     'summary': f'Sample portfolio for {username}',
                     'is_published': True,
                     'is_public': True if idx % 2 == 1 else False,
-                    'visibility': models.VisibilityChoice.PUBLIC if idx % 2 == 1 else models.VisibilityChoice.PRIVATE
                 }
             )
             if port_created:

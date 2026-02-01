@@ -10,11 +10,6 @@ class ProficiencyLevel(models.TextChoices):
     INTERMEDIATE = "INTERMEDIATE", "Intermediate"
     ADVANCED = "ADVANCED", "Advanced"
     EXPERT = "EXPERT", "Expert"
-
-class VisibilityChoice(models.TextChoices):
-    PRIVATE = "PRIVATE", "Private"
-    RECRUITER_ONLY = "RECRUITER_ONLY", "Recruiter Only (Link Share)"
-    PUBLIC = "PUBLIC", "Public"
 # endregion
 
 # region: User Profile Model
@@ -52,13 +47,6 @@ class Portfolio(models.Model):
     # Legacy field for backward compatibility
     is_public = models.BooleanField(default=False)
     is_published = models.BooleanField(default=False)
-    
-    # New visibility system
-    visibility = models.CharField(
-        max_length=20,
-        choices=VisibilityChoice.choices,
-        default=VisibilityChoice.PRIVATE
-    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -228,7 +216,6 @@ class PortfolioVersion(models.Model):
     # Snapshot data
     title = models.CharField(max_length=150)
     summary = models.TextField()
-    visibility = models.CharField(max_length=20)
     is_published = models.BooleanField()
     
     # Metadata
