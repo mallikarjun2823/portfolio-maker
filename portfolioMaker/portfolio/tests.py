@@ -9,7 +9,7 @@ from django.db import transaction
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ValidationError
 from unittest.mock import patch
-from .models import Project, Portfolio, Skill, Education, SocialLink, Document, PortfolioVersion, ProfileView, ActivityLog, ProficiencyLevel, VisibilityChoice
+from .models import Project, Portfolio, Skill, Education, SocialLink, Document, PortfolioVersion, ProfileView, ActivityLog, ProficiencyLevel, PortfolioStatus, ItemStatus
 from .services import PortfolioService, ProjectService, SkillService, EducationService, SocialLinkService, DocumentService
 from .permissions import IsPortfolioOwner
 from datetime import date, datetime, timedelta
@@ -42,8 +42,7 @@ class BaseSeededTestCase(APITestCase):
             defaults={
                 'title': f"{cls.user.username} Portfolio",
                 'summary': 'Auto-created portfolio for tests',
-                'is_published': True,
-                'is_public': True
+                'status': PortfolioStatus.PUBLISHED
             }
         )
 
@@ -75,7 +74,7 @@ class PortfolioTests(BaseSeededTestCase):
 
     def test_create_portfolio_existing_user_fails(self):
         url = reverse('portfolio-list-create')
-        data = {'title': 'Dup', 'summary': 'Dup', 'is_published': False, 'is_public': False}
+        data = {'title': 'Dup', 'summary': 'Dup', 'status': PortfolioStatus.DRAFT}
         resp = self.client.post(url, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -84,7 +83,7 @@ class PortfolioTests(BaseSeededTestCase):
         self.client.logout()
         self.client.login(username='newuser', password='newpass')
         url = reverse('portfolio-list-create')
-        data = {'title': 'New User Portfolio', 'summary': 'A portfolio for new user', 'is_published': True, 'is_public': True}
+        data = {'title': 'New User Portfolio', 'summary': 'A portfolio for new user', 'status': PortfolioStatus.PUBLISHED}
         resp = self.client.post(url, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Portfolio.objects.filter(user__username='newuser').exists())
@@ -132,12 +131,14 @@ class PortfolioTests(BaseSeededTestCase):
 
     def test_public_flag_validation(self):
         # cannot set public when not published
-        self.portfolio.is_published = False
-        self.portfolio.is_public = False
+        self.portfolio.status = PortfolioStatus.DRAFT
         self.portfolio.save()
         url = reverse('portfolio-detail', kwargs={'pk': self.portfolio.id})
-        resp = self.client.put(url, {'is_public': True}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        # status is read-only via serializer; attempting to change it through the API should not update it
+        resp = self.client.put(url, {'status': PortfolioStatus.PUBLISHED}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.status, PortfolioStatus.DRAFT)
 
 
 class ProjectTests(BaseSeededTestCase):
@@ -149,7 +150,7 @@ class ProjectTests(BaseSeededTestCase):
 
     def test_create_project(self):
         url = reverse('project-list-create', kwargs={'portfolio_id': self.portfolio.id})
-        data = {'title': 'ProjX', 'description': 'A valid description for project', 'tech_stack': 'Django', 'project_url': 'https://ex.com', 'is_published': True}
+        data = {'title': 'ProjX', 'description': 'A valid description for project', 'tech_stack': 'Django', 'project_url': 'https://ex.com', 'status': ItemStatus.PUBLISHED}
         resp = self.client.post(url, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Project.objects.filter(title='ProjX').exists())
@@ -392,7 +393,7 @@ class PortfolioBusinessLogicTests(APITestCase):
         # Create first portfolio
         portfolio1 = service.create_portfolio(
             user=self.user1,
-            data={'title': 'First Portfolio', 'summary': 'First summary', 'is_published': False}
+            data={'title': 'First Portfolio', 'summary': 'First summary', 'status': PortfolioStatus.DRAFT}
         )
         self.assertTrue(Portfolio.objects.filter(user=self.user1).exists())
         
@@ -400,7 +401,7 @@ class PortfolioBusinessLogicTests(APITestCase):
         with self.assertRaises(ValidationError) as cm:
             service.create_portfolio(
                 user=self.user1,
-                data={'title': 'Second Portfolio', 'summary': 'Second summary', 'is_published': False}
+                data={'title': 'Second Portfolio', 'summary': 'Second summary', 'status': PortfolioStatus.DRAFT}
             )
         self.assertIn('already exists', str(cm.exception))
 
@@ -408,36 +409,27 @@ class PortfolioBusinessLogicTests(APITestCase):
         """Test that portfolios cannot be public unless published"""
         service = PortfolioService()
         
-        # Cannot create public unpublished portfolio
-        with self.assertRaises(ValidationError) as cm:
-            service.create_portfolio(
-                user=self.user1,
-                data={'title': 'Test Portfolio', 'summary': 'Test summary', 'is_published': False, 'is_public': True}
-            )
-        self.assertIn('cannot be public unless it is published', str(cm.exception))
-        
-        # Can create public published portfolio
+        # Creating a portfolio with explicit status works
         portfolio = service.create_portfolio(
             user=self.user1,
-            data={'title': 'Test Portfolio', 'summary': 'Test summary', 'is_published': True, 'is_public': True}
+            data={'title': 'Test Portfolio', 'summary': 'Test summary', 'status': PortfolioStatus.PUBLISHED}
         )
-        self.assertTrue(portfolio.is_public)
-        self.assertTrue(portfolio.is_published)
+        self.assertEqual(portfolio.status, PortfolioStatus.PUBLISHED)
 
     def test_portfolio_visibility_rules(self):
         """Test portfolio visibility to different users"""
         service = PortfolioService()
         
-        # Create private portfolio for user1
+        # Create private (non-published) portfolio for user1
         private_portfolio = service.create_portfolio(
             user=self.user1,
-            data={'title': 'Private Portfolio', 'summary': 'Private summary', 'is_published': True, 'is_public': False}
+            data={'title': 'Private Portfolio', 'summary': 'Private summary', 'status': PortfolioStatus.DRAFT}
         )
         
-        # Create public portfolio for user2  
+        # Create public (published) portfolio for user2  
         public_portfolio = service.create_portfolio(
             user=self.user2,
-            data={'title': 'Public Portfolio', 'summary': 'Public summary', 'is_published': True, 'is_public': True}
+            data={'title': 'Public Portfolio', 'summary': 'Public summary', 'status': PortfolioStatus.PUBLISHED}
         )
         
         # Anonymous user should only see public portfolios
@@ -460,15 +452,11 @@ class PortfolioBusinessLogicTests(APITestCase):
         service = PortfolioService()
         portfolio = service.create_portfolio(
             user=self.user1,
-            data={'title': 'Test Portfolio', 'summary': 'Test summary', 'is_published': True, 'is_public': False}
+            data={'title': 'Test Portfolio', 'summary': 'Test summary', 'status': PortfolioStatus.PUBLISHED}
         )
-        
-        # Cannot update to public without published
-        with self.assertRaises(ValidationError):
-            service.update_portfolio(
-                portfolio=portfolio,
-                data={'is_published': False, 'is_public': True}
-            )
+        # Update summary should work
+        updated = service.update_portfolio(portfolio=portfolio, data={'summary': 'Updated summary via service'})
+        self.assertEqual(updated.summary, 'Updated summary via service')
 
 
 class ProjectValidationTests(APITestCase):
@@ -480,7 +468,7 @@ class ProjectValidationTests(APITestCase):
             user=self.user,
             title='Test Portfolio',
             summary='Test summary',
-            is_published=True
+            status=PortfolioStatus.PUBLISHED
         )
         self.client.login(username='projuser', password='pass123')
 
@@ -533,15 +521,15 @@ class ProjectValidationTests(APITestCase):
             portfolio=self.portfolio,
             data={'title': 'Published Project', 'description': 'Published description', 'tech_stack': 'Django', 'project_url': 'https://example.com/published'}
         )
-        # Set is_published to True after creation
-        published_project.is_published = True
+        # Set status to PUBLISHED after creation
+        published_project.status = ItemStatus.PUBLISHED
         published_project.save()
         
         unpublished_project = service.create_project(
             portfolio=self.portfolio,
             data={'title': 'Unpublished Project', 'description': 'Unpublished description', 'tech_stack': 'React', 'project_url': 'https://example.com/unpublished'}
         )
-        # Ensure unpublished_project.is_published is False (default)
+        # Ensure unpublished_project.status is DRAFT (default)
         
         # Owner should see both
         owner_projects = service.get_visible_projects_for_user_and_portfolio(self.user, self.portfolio)
@@ -574,7 +562,7 @@ class DocumentBusinessRulesTests(APITestCase):
         file1 = SimpleUploadedFile('resume1.pdf', b'resume content 1')
         resume1 = service.create_document(
             portfolio=self.portfolio,
-            data={'file': file1, 'doc_type': Document.DocumentType.RESUME, 'is_public': False}
+            data={'file': file1, 'doc_type': Document.DocumentType.RESUME, 'status': ItemStatus.DRAFT}
         )
         self.assertTrue(Document.objects.filter(portfolio=self.portfolio, doc_type=Document.DocumentType.RESUME).exists())
         
@@ -583,7 +571,7 @@ class DocumentBusinessRulesTests(APITestCase):
         with self.assertRaises(ValidationError) as cm:
             service.create_document(
                 portfolio=self.portfolio,
-                data={'file': file2, 'doc_type': Document.DocumentType.RESUME, 'is_public': False}
+                data={'file': file2, 'doc_type': Document.DocumentType.RESUME, 'status': ItemStatus.DRAFT}
             )
         self.assertIn('Only one resume allowed', str(cm.exception))
         
@@ -591,25 +579,25 @@ class DocumentBusinessRulesTests(APITestCase):
         file3 = SimpleUploadedFile('cert.pdf', b'certificate content')
         cert = service.create_document(
             portfolio=self.portfolio,
-            data={'file': file3, 'doc_type': Document.DocumentType.CERTIFICATE, 'is_public': True}
+            data={'file': file3, 'doc_type': Document.DocumentType.CERTIFICATE, 'status': ItemStatus.PUBLISHED}
         )
         self.assertTrue(Document.objects.filter(portfolio=self.portfolio, doc_type=Document.DocumentType.CERTIFICATE).exists())
 
     def test_document_visibility_rules(self):
-        """Test document visibility based on is_public flag"""
+        """Test document visibility based on `status` (published vs draft)"""
         service = DocumentService()
         
         # Create public and private documents
         public_file = SimpleUploadedFile('public.pdf', b'public content')
         public_doc = service.create_document(
             portfolio=self.portfolio,
-            data={'file': public_file, 'doc_type': Document.DocumentType.CERTIFICATE, 'is_public': True}
+            data={'file': public_file, 'doc_type': Document.DocumentType.CERTIFICATE, 'status': ItemStatus.PUBLISHED}
         )
         
         private_file = SimpleUploadedFile('private.pdf', b'private content')  
         private_doc = service.create_document(
             portfolio=self.portfolio,
-            data={'file': private_file, 'doc_type': Document.DocumentType.OTHER, 'is_public': False}
+            data={'file': private_file, 'doc_type': Document.DocumentType.OTHER, 'status': ItemStatus.DRAFT}
         )
         
         # Owner should see both
@@ -633,8 +621,7 @@ class PortfolioVersioningTests(APITestCase):
             user=self.user,
             title='Versioned Portfolio',
             summary='Original summary',
-            is_published=True,
-            visibility=VisibilityChoice.PUBLIC
+            status=PortfolioStatus.PUBLISHED
         )
         self.client.login(username='veruser', password='pass123')
 
@@ -884,8 +871,7 @@ class AnalyticsAdvancedTests(APITestCase):
             user=self.user,
             title='Analytics Portfolio',
             summary='Analytics summary',
-            is_published=True,
-            is_public=True
+            status=PortfolioStatus.PUBLISHED
         )
         
         # Create some profile views for testing
@@ -952,8 +938,7 @@ class ProfileViewTrackingTests(APITestCase):
             user=self.user1,
             title='Viewed Portfolio',
             summary='Viewed summary',
-            is_published=True,
-            is_public=True
+            status=PortfolioStatus.PUBLISHED
         )
 
     def test_profile_view_logging(self):
@@ -1022,7 +1007,7 @@ class ServiceLayerTests(TestCase):
             user=User.objects.create_user('public', 'public@test.com', 'pass123'),
             title='Public Portfolio',
             summary='Public summary',
-            is_public=True
+            status=PortfolioStatus.PUBLISHED
         )
         
         # Anonymous user should only see public
@@ -1045,7 +1030,7 @@ class ServiceLayerTests(TestCase):
             title='Published Project',
             description='Published description',
             tech_stack='Django',
-            is_published=True
+            status=ItemStatus.PUBLISHED
         )
         
         unpublished_project = Project.objects.create(
@@ -1053,7 +1038,7 @@ class ServiceLayerTests(TestCase):
             title='Unpublished Project',
             description='Unpublished description',
             tech_stack='React',
-            is_published=False
+            status=ItemStatus.DRAFT
         )
         
         # Test visibility methods
@@ -1092,8 +1077,7 @@ class IntegrationTests(APITestCase):
         resp = self.client.post(reverse('portfolio-list-create'), {
             'title': 'Integration Test Portfolio',
             'summary': 'A complete integration test portfolio',
-            'is_published': True,
-            'is_public': True
+            'status': PortfolioStatus.PUBLISHED
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         portfolio_id = resp.data['id']

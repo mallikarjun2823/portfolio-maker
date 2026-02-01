@@ -15,7 +15,7 @@ class ProjectService:
             return self.list_public_projects_for_portfolio(portfolio)
 
     def list_public_projects(self):
-        return models.Project.objects.filter(is_published=True)
+        return models.Project.objects.filter(status=models.ItemStatus.PUBLISHED)
 
     def list_projects_for_user(self, user):
         return models.Project.objects.filter(
@@ -26,7 +26,7 @@ class ProjectService:
         return models.Project.objects.filter(portfolio=portfolio)
 
     def list_public_projects_for_portfolio(self, portfolio):
-        return models.Project.objects.filter(portfolio=portfolio, is_published=True)
+        return models.Project.objects.filter(portfolio=portfolio, status=models.ItemStatus.PUBLISHED)
 
     def get_project_by_id(self, project_id):
         try:
@@ -170,17 +170,18 @@ class DocumentService:
         return models.Document.objects.filter(portfolio=portfolio)
 
     def list_public_documents_for_portfolio(self, portfolio):
-        return models.Document.objects.filter(portfolio=portfolio, is_public=True)
+        return models.Document.objects.filter(portfolio=portfolio, status=models.ItemStatus.PUBLISHED)
 
     def create_document(self, *, portfolio, data):
         # Business rule: only one resume per portfolio
         if data.get("doc_type") == models.Document.DocumentType.RESUME and models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
             raise ValidationError("Only one resume allowed per portfolio")
+        status = data.get("status", models.ItemStatus.DRAFT)
         return models.Document.objects.create(
             portfolio=portfolio,
             file=data["file"],
             doc_type=data["doc_type"],
-            is_public=data.get("is_public", False)
+            status=status
         )
 
     def update_document(self, *, document, data):
@@ -216,9 +217,9 @@ class PortfolioService:
         """
         if viewer and viewer.is_authenticated:
             return models.Portfolio.objects.filter(
-                Q(is_public=True) | Q(user=viewer)
+                Q(status=models.PortfolioStatus.PUBLISHED) | Q(user=viewer)
             )
-        return models.Portfolio.objects.filter(is_public=True)
+        return models.Portfolio.objects.filter(status=models.PortfolioStatus.PUBLISHED)
 
     def create_portfolio(self, *, user, data):
         """
@@ -231,19 +232,13 @@ class PortfolioService:
         if models.Portfolio.objects.filter(user=user).exists():
             raise ValidationError("Portfolio already exists for this user")
 
-        is_published = data.get("is_published", False)
-        is_public = data.get("is_public", False)
-
-        # Domain invariant enforcement
-        if is_public and not is_published:
-            raise ValidationError("Portfolio cannot be public unless it is published")
+        status = data.get("status", models.PortfolioStatus.DRAFT)
 
         portfolio = models.Portfolio.objects.create(
             user=user,
             title=data["title"],
             summary=data.get("summary", ""),
-            is_published=is_published,
-            is_public=is_public,
+            status=status,
         )
 
         return portfolio
@@ -252,14 +247,11 @@ class PortfolioService:
         for field, value in data.items():
             # ensure we only set fields that exist on the model
             if hasattr(portfolio, field):
-                if field == "is_public" and value:
-                    if not data.get("is_published", portfolio.is_published):
-                        raise ValidationError("Portfolio cannot be public unless it is published")
                 setattr(portfolio, field, value)
         portfolio.save()
         
         # Auto-create version snapshot on update
-        if portfolio.is_published:
+        if portfolio.status == models.PortfolioStatus.PUBLISHED:
             self.create_version_snapshot(
                 portfolio=portfolio,
                 user=portfolio.user,
@@ -285,8 +277,7 @@ class PortfolioService:
             version_number=next_version,
             title=portfolio.title,
             summary=portfolio.summary,
-            visibility=portfolio.visibility,
-            is_published=portfolio.is_published,
+            status=portfolio.status,
             created_by=user,
             change_note=change_note,
             is_draft=is_draft
@@ -319,12 +310,11 @@ class PortfolioService:
             user=user,
             change_note=f"Auto-snapshot before reverting to v{version_number}"
         )
-        
+
         # Apply version data
         portfolio.title = version.title
         portfolio.summary = version.summary
-        portfolio.visibility = version.visibility
-        portfolio.is_published = version.is_published
+        portfolio.status = version.status
         portfolio.save()
         
         # Create new version for the revert

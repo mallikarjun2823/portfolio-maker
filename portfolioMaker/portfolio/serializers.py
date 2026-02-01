@@ -101,10 +101,10 @@ class ProjectSerializer(serializers.ModelSerializer):
             'description',
             'tech_stack',
             'project_url',
-            'is_published',
+            'status',
             'created_at'
         ]
-        read_only_fields = ['id', 'portfolio', 'is_published', 'created_at']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
@@ -126,10 +126,10 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             'description',
             'tech_stack',
             'project_url',
-            'is_published',
+            'status',
             'created_at'
         ]
-        read_only_fields = ['id', 'portfolio', 'created_at']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
 
 class SkillSerializer(serializers.ModelSerializer):
 
@@ -243,10 +243,10 @@ class DocumentSerializer(serializers.ModelSerializer):
             'id',
             'file',
             'doc_type',
-            'is_public',
+            'status',
             'uploaded_at'
         ]
-        read_only_fields = ['id', 'uploaded_at']
+        read_only_fields = ['id', 'uploaded_at', 'status']
 # endregion
 
 # region: Portfolio Versioning Serializers
@@ -260,8 +260,7 @@ class PortfolioVersionSerializer(serializers.ModelSerializer):
             'version_number',
             'title',
             'summary',
-            'visibility',
-            'is_published',
+            'status',
             'created_at',
             'created_by',
             'created_by_username',
@@ -297,13 +296,11 @@ class PortfolioSerializer(serializers.ModelSerializer):
             'user',
             'title',
             'summary',
-            'is_public',
-            'is_published',
-            'visibility',
+            'status',
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'status']
 
 
 # region: Analytics Request Serializer

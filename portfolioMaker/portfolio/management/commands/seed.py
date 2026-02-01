@@ -41,8 +41,7 @@ class Command(BaseCommand):
                 defaults={
                     'title': title,
                     'summary': f'Sample portfolio for {username}',
-                    'is_published': True,
-                    'is_public': True if idx % 2 == 1 else False,
+                    'status': models.PortfolioStatus.PUBLISHED if idx % 2 == 1 else models.PortfolioStatus.DRAFT,
                 }
             )
             if port_created:
@@ -60,7 +59,7 @@ class Command(BaseCommand):
                         'description': f'Description for {proj_title}',
                         'tech_stack': 'Django, DRF, PostgreSQL',
                         'project_url': f'https://example.com/{username}/project{i}',
-                        'is_published': True if i != 3 else False
+                        'status': models.ItemStatus.PUBLISHED if i != 3 else models.ItemStatus.DRAFT
                     }
                 )
                 if proj_created:
@@ -122,13 +121,13 @@ class Command(BaseCommand):
             # Resume: only one per portfolio
             if not models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
                 resume_content = ContentFile(f'Resume for {username}\nExperience: 3 years'.encode('utf-8'))
-                resume = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME, is_public=False)
+                resume = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME, status=models.ItemStatus.DRAFT)
                 resume.file.save(f'resume_{username}.txt', resume_content, save=True)
                 self.stdout.write(self.style.SUCCESS(f'  Created resume for {username}'))
 
             # Certificate doc
             cert_content = ContentFile(f'Certificate for {username}'.encode('utf-8'))
-            cert = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.CERTIFICATE, is_public=False)
+            cert = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.CERTIFICATE, status=models.ItemStatus.DRAFT)
             cert.file.save(f'certificate_{username}.txt', cert_content, save=True)
             self.stdout.write(self.style.SUCCESS(f'  Created certificate for {username}'))
 
@@ -139,8 +138,7 @@ class Command(BaseCommand):
                     version_number=1,
                     title=portfolio.title,
                     summary=portfolio.summary,
-                    visibility=portfolio.visibility,
-                    is_published=portfolio.is_published,
+                    status=portfolio.status,
                     created_by=user,
                     change_note='Initial seed version',
                     is_draft=False

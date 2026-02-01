@@ -10,6 +10,19 @@ class ProficiencyLevel(models.TextChoices):
     INTERMEDIATE = "INTERMEDIATE", "Intermediate"
     ADVANCED = "ADVANCED", "Advanced"
     EXPERT = "EXPERT", "Expert"
+
+# Portfolio status choices
+class PortfolioStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    REVIEW = "REVIEW", "In Review"
+    PUBLISHED = "PUBLISHED", "Published"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+# Item-level status choices (projects, skills, education, documents)
+class ItemStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    PUBLISHED = "PUBLISHED", "Published"
+    ARCHIVED = "ARCHIVED", "Archived"
 # endregion
 
 # region: User Profile Model
@@ -44,9 +57,12 @@ class Portfolio(models.Model):
     title = models.CharField(max_length=150)
     summary = models.TextField()
 
-    # Legacy field for backward compatibility
-    is_public = models.BooleanField(default=False)
-    is_published = models.BooleanField(default=False)
+    # Status replaces legacy booleans
+    status = models.CharField(
+        max_length=20,
+        choices=PortfolioStatus.choices,
+        default=PortfolioStatus.DRAFT
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -68,7 +84,11 @@ class Project(models.Model):
     tech_stack = models.CharField(max_length=200)
     project_url = models.URLField(blank=True)
 
-    is_published = models.BooleanField(default=False)
+    status = models.CharField(
+        max_length=20,
+        choices=ItemStatus.choices,
+        default=ItemStatus.DRAFT
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -91,6 +111,11 @@ class Skill(models.Model):
 
     years_of_experience = models.PositiveIntegerField()
     skill_certification = models.FileField(blank=True, null=True)
+    status = models.CharField(
+        max_length=20,
+        choices=ItemStatus.choices,
+        default=ItemStatus.DRAFT
+    )
 
     def __str__(self):
         return f"{self.name} ({self.proficiency_level})"
@@ -108,6 +133,11 @@ class Education(models.Model):
     degree = models.CharField(max_length=100)
     start_year = models.PositiveIntegerField()
     end_year = models.PositiveIntegerField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=ItemStatus.choices,
+        default=ItemStatus.DRAFT
+    )
 
     def __str__(self):
         return f"{self.institution} - {self.degree}"
@@ -123,6 +153,11 @@ class SocialLink(models.Model):
 
     platform = models.CharField(max_length=50)
     url = models.URLField()
+    status = models.CharField(
+        max_length=20,
+        choices=ItemStatus.choices,
+        default=ItemStatus.DRAFT
+    )
 
     def __str__(self):
         return self.platform
@@ -195,7 +230,11 @@ class Document(models.Model):
         choices=DocumentType.choices
     )
 
-    is_public = models.BooleanField(default=False)
+    status = models.CharField(
+        max_length=20,
+        choices=ItemStatus.choices,
+        default=ItemStatus.DRAFT
+    )
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -216,7 +255,7 @@ class PortfolioVersion(models.Model):
     # Snapshot data
     title = models.CharField(max_length=150)
     summary = models.TextField()
-    is_published = models.BooleanField()
+    status = models.CharField(max_length=20)
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)

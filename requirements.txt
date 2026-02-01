@@ -20,3 +20,8 @@ pytest-django==4.8.0
 
 # Utilities
 python-dateutil==2.8.2
+
+# Task queue
+celery==5.4.0
+redis==5.0.1
+django-celery-results==2.5.2
