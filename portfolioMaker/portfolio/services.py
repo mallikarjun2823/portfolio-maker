@@ -9,7 +9,7 @@ from datetime import datetime
 class ProjectService:
     def get_visible_projects_for_user_and_portfolio(self, user, portfolio):
         # Only business logic, no request/serializer
-        if user.is_authenticated and user == portfolio.user:
+        if user and user.is_authenticated and user == portfolio.user:
             return self.list_projects_for_portfolio(portfolio)
         else:
             return self.list_public_projects_for_portfolio(portfolio)
@@ -63,7 +63,7 @@ class ProjectService:
 # region: Skill Service
 class SkillService:
     def get_visible_skills_for_user_and_portfolio(self, user, portfolio):
-        if user.is_authenticated and user == portfolio.user:
+        if user and user.is_authenticated and user == portfolio.user:
             return self.list_skills_for_portfolio(portfolio)
         else:
             return self.list_public_skills_for_portfolio(portfolio)
@@ -97,7 +97,7 @@ class SkillService:
 # region: Education Service
 class EducationService:
     def get_visible_education_for_user_and_portfolio(self, user, portfolio):
-        if user.is_authenticated and user == portfolio.user:
+        if user and user.is_authenticated and user == portfolio.user:
             return self.list_education_for_portfolio(portfolio)
         else:
             return self.list_public_education_for_portfolio(portfolio)
@@ -130,7 +130,7 @@ class EducationService:
 # region: SocialLink Service
 class SocialLinkService:
     def get_visible_social_links_for_user_and_portfolio(self, user, portfolio):
-        if user.is_authenticated and user == portfolio.user:
+        if user and user.is_authenticated and user == portfolio.user:
             return self.list_social_links_for_portfolio(portfolio)
         else:
             return self.list_public_social_links_for_portfolio(portfolio)
@@ -161,7 +161,7 @@ class SocialLinkService:
 # region: Document Service
 class DocumentService:
     def get_visible_documents_for_user_and_portfolio(self, user, portfolio):
-        if user.is_authenticated and user == portfolio.user:
+        if user and user.is_authenticated and user == portfolio.user:
             return self.list_documents_for_portfolio(portfolio)
         else:
             return self.list_public_documents_for_portfolio(portfolio)
@@ -199,10 +199,10 @@ class PortfolioService:
         Logs a profile view event. Viewer can be None (anonymous).
         Only logs if viewer is not the portfolio owner.
         """
-        if viewer.is_authenticated and viewer == portfolio.user:
+        if viewer and viewer.is_authenticated and viewer == portfolio.user:
             return 
         models.ProfileView.objects.create(
-            viewer=viewer if viewer.is_authenticated else None,
+            viewer=viewer if viewer and viewer.is_authenticated else None,
             portfolio=portfolio,
             ip_address=ip_address
         )
