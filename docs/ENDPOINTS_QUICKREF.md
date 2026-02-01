@@ -1,4 +1,4 @@
-# Endpoint Quick Reference 📋
+# Endpoint Quick Reference
 
 **Base URL:** `http://127.0.0.1:8000/`
 
@@ -6,7 +6,7 @@
 
 ---
 
-## Authentication 🔑
+## Authentication
 
 - **POST** `http://127.0.0.1:8000/register/`
   - Headers: `Content-Type: application/json`
@@ -19,7 +19,7 @@
 
 ---
 
-## Portfolios 📁
+## Portfolios
 
 - **GET** `http://127.0.0.1:8000/portfolios/` — list (public + own private)
 - **POST** `http://127.0.0.1:8000/portfolios/` — create (auth)
@@ -33,49 +33,50 @@ Notes: only one portfolio per user; cannot set `is_public` true if `is_published
 
 ---
 
-## Projects (portfolio-scoped) 🚧
+## Projects (portfolio-scoped)
 
-- **GET** `http://127.0.0.1:8000/portfolios/<portfolio_id>/projects/` — list (non-owner sees only published)
-- **POST** `http://127.0.0.1:8000/portfolios/<portfolio_id>/projects/` — create (owner only)
+-- **GET** `http://127.0.0.1:8000/portfolio/<portfolio_id>/projects/` — list (non-owner sees only published)
+-- **POST** `http://127.0.0.1:8000/portfolio/<portfolio_id>/projects/` — create (owner only)
   - Body example:
     ```json
     { "title": "Project X", "description": "Details...", "tech_stack": "Django, React", "project_url": "https://example.com", "is_published": true }
     ```
   - Validation: `title` >= 5 chars; `description` >= 10 chars; `project_url` must start with http/https.
-- **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolios/<portfolio_id>/projects/<pk>/`
+-- **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolio/<portfolio_id>/projects/<pk>/`
 
 ---
 
-## Skills 🧰
+## Skills
 
-- **GET** `http://127.0.0.1:8000/portfolios/<portfolio_id>/skills/`
-- **POST** `http://127.0.0.1:8000/portfolios/<portfolio_id>/skills/` (owner)
   - Body example: `{ "name": "Python", "proficiency_level": "ADVANCED", "years_of_experience": 4 }`
-- **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolios/<portfolio_id>/skills/<pk>/`
+**GET** `http://127.0.0.1:8000/portfolio/<portfolio_id>/skills/`
+**POST** `http://127.0.0.1:8000/portfolio/<portfolio_id>/skills/` (owner)
+  - Body example: `{ "name": "Python", "proficiency_level": "ADVANCED", "years_of_experience": 4 }`
+**GET / PUT / DELETE** `http://127.0.0.1:8000/portfolio/<portfolio_id>/skills/<pk>/`
 
 ---
 
-## Education 🎓
+## Education
 
-- **GET** `http://127.0.0.1:8000/portfolios/<portfolio_id>/education/`
-- **POST** `http://127.0.0.1:8000/portfolios/<portfolio_id>/education/` — example:
+-- **GET** `http://127.0.0.1:8000/portfolio/<portfolio_id>/education/`
+-- **POST** `http://127.0.0.1:8000/portfolio/<portfolio_id>/education/` — example:
   ```json
   { "institution": "Uni", "degree": "BSc", "start_year": 2014, "end_year": 2018 }
   ```
-- **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolios/<portfolio_id>/education/<pk>/`
+-- **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolio/<portfolio_id>/education/<pk>/`
 
 ---
 
-## Social Links 🔗
+## Social Links
 
-- **GET** `http://127.0.0.1:8000/portfolios/<portfolio_id>/social-links/`
-- **POST** `http://127.0.0.1:8000/portfolios/<portfolio_id>/social-links/` — example:
+-- **GET** `http://127.0.0.1:8000/portfolio/<portfolio_id>/social-links/`
+-- **POST** `http://127.0.0.1:8000/portfolio/<portfolio_id>/social-links/` — example:
   `{ "platform": "GitHub", "url": "https://github.com/user" }`
-- **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolios/<portfolio_id>/social-links/<pk>/`
+-- **GET / PUT / DELETE** `http://127.0.0.1:8000/portfolio/<portfolio_id>/social-links/<pk>/`
 
 ---
 
-## Documents (upload) 📄
+## Documents (upload)
 
 - **GET** `http://127.0.0.1:8000/portfolios/<portfolio_id>/documents/`
 - **POST** `http://127.0.0.1:8000/portfolios/<portfolio_id>/documents/` — multipart/form-data
@@ -90,23 +91,23 @@ curl -X POST -H "Authorization: Bearer <token>" -F "doc_type=resume" -F "file=@r
 
 ---
 
-## Versions 🔁
+## Versions
 
-- **GET** `/portfolios/<portfolio_id>/versions/`
-- **POST** `/portfolios/<portfolio_id>/versions/` — create snapshot
+-- **GET** `/portfolio/<portfolio_id>/versions/`
+-- **POST** `/portfolio/<portfolio_id>/versions/` — create snapshot
   - Body: `{ "change_note": "manual snapshot", "is_draft": false }`
-- **GET** `/portfolios/<portfolio_id>/versions/<version_number>/`
-- **POST** `/portfolios/<portfolio_id>/versions/<version_number>/revert/` — revert (owner)
+-- **GET** `/portfolio/<portfolio_id>/versions/<version_number>/`
+-- **POST** `/portfolio/<portfolio_id>/versions/<version_number>/revert/` — revert (owner)
 
 ---
 
-## Dev helper 🔍
+## Developer helper
 
-- **GET** `/debug/queries/` — returns `{"query_count": <n>, "data": [...]}` (only when `DEBUG=True`). Useful to detect N+1 queries.
+- **GET** `/debug/queries/` — returns `{"query_count": <n>, "data": [...]}` (development only; active when `DEBUG=True`). Useful to detect N+1 queries.
 
 ---
 
-## Quick cURL examples 🧪
+## Quick cURL examples
 
 - Register:
   ```bash
@@ -131,4 +132,4 @@ curl -X POST -H "Authorization: Bearer <token>" -F "doc_type=resume" -F "file=@r
 
 ---
 
-Created for quick local testing and debugging. ✅
+Created for quick local testing and debugging.
