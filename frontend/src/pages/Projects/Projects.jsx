@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { portfolioService, projectService, skillService } from '../../api/services';
 import Card from '../../components/Card/Card';
 import Badge from '../../components/Badge/Badge';
@@ -8,6 +9,7 @@ import EmptyState from '../../components/EmptyState/EmptyState';
 import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
 
 const Projects = () => {
+  const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState(null);
   const [projects, setProjects] = useState([]);
   const [skills, setSkills] = useState([]);
@@ -27,10 +29,11 @@ const Projects = () => {
   });
   const [skillForm, setSkillForm] = useState({
     name: '',
-    proficiency_level: 'Beginner',
+    proficiency_level: 'BEGINNER',
     years_of_experience: 0,
     certification: ''
   });
+  const [submitting, setSubmitting] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [editingSkill, setEditingSkill] = useState(null);
 
@@ -113,26 +116,34 @@ const Projects = () => {
   const handleSkillSubmit = async (e) => {
     e.preventDefault();
     if (!portfolio) return;
-
     try {
       setSubmitting(true);
+      // backend expects 'skill_certification' field name
+      const payload = {
+        name: skillForm.name,
+        proficiency_level: skillForm.proficiency_level,
+        years_of_experience: skillForm.years_of_experience,
+        skill_certification: skillForm.certification || null,
+      };
+
       if (editingSkill) {
-        await skillService.updateSkill(portfolio.id, editingSkill.id, skillForm);
+        await skillService.updateSkill(portfolio.id, editingSkill.id, payload);
         setEditingSkill(null);
       } else {
-        await skillService.createSkill(portfolio.id, skillForm);
+        await skillService.createSkill(portfolio.id, payload);
       }
+
       setShowSkillModal(false);
       setSkillForm({
         name: '',
-        proficiency_level: 'Beginner',
+        proficiency_level: 'BEGINNER',
         years_of_experience: 0,
         certification: ''
       });
       await loadData(); // Reload data
     } catch (err) {
       console.error('Error saving skill:', err);
-      setError('Failed to save skill');
+      setError(err.response?.data || 'Failed to save skill');
     } finally {
       setSubmitting(false);
     }
@@ -195,10 +206,16 @@ const Projects = () => {
     );
   }
 
-  if (error) {
+  if (!portfolio) {
     return (
       <div className="container py-4">
-        <ErrorMessage title="Projects Error" message={error} />
+        <div className="card">
+          <div className="card-body">
+            <h1 className="card-title">Projects & Skills</h1>
+            <p className="card-text">You don't have a portfolio yet. Create one to manage your projects and skills.</p>
+            <button className="btn btn-primary" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -320,11 +337,11 @@ const Projects = () => {
 
       {/* Add Project Modal */}
       {showProjectModal && (
-        <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
-          <div className="modal-dialog">
+        <div className="modal fade show d-block" tabIndex="-1" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Add New Project</h5>
+                <h5 className="modal-title">{editingProject ? 'Edit Project' : 'Add New Project'}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowProjectModal(false)}></button>
               </div>
               <form onSubmit={handleProjectSubmit}>
@@ -385,7 +402,7 @@ const Projects = () => {
                 <div className="modal-footer">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowProjectModal(false)}>Cancel</button>
                   <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? 'Creating...' : 'Create Project'}
+                    {submitting ? 'Creating...' : (editingProject ? 'Update Project' : 'Create Project')}
                   </button>
                 </div>
               </form>
@@ -396,11 +413,11 @@ const Projects = () => {
 
       {/* Add Skill Modal */}
       {showSkillModal && (
-        <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+        <div className="modal fade show d-block" tabIndex="-1" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Add New Skill</h5>
+                <h5 className="modal-title">{editingSkill ? 'Edit Skill' : 'Add New Skill'}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowSkillModal(false)}></button>
               </div>
               <form onSubmit={handleSkillSubmit}>
@@ -422,10 +439,10 @@ const Projects = () => {
                       value={skillForm.proficiency_level}
                       onChange={(e) => setSkillForm({...skillForm, proficiency_level: e.target.value})}
                     >
-                      <option value="Beginner">Beginner</option>
-                      <option value="Intermediate">Intermediate</option>
-                      <option value="Advanced">Advanced</option>
-                      <option value="Expert">Expert</option>
+                      <option value="BEGINNER">Beginner</option>
+                      <option value="INTERMEDIATE">Intermediate</option>
+                      <option value="ADVANCED">Advanced</option>
+                      <option value="EXPERT">Expert</option>
                     </select>
                   </div>
                   <div className="mb-3">
@@ -453,7 +470,7 @@ const Projects = () => {
                 <div className="modal-footer">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowSkillModal(false)}>Cancel</button>
                   <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? 'Creating...' : 'Create Skill'}
+                    {submitting ? 'Creating...' : (editingSkill ? 'Update Skill' : 'Create Skill')}
                   </button>
                 </div>
               </form>

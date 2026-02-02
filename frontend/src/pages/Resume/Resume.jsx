@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { portfolioService, projectService, skillService, educationService, socialLinkService } from '../../api/services';
 import Button from '../../components/Button/Button';
 import LoadingSkeleton from '../../components/LoadingSkeleton/LoadingSkeleton';
 import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
 
 const Resume = () => {
+  const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState(null);
   const [projects, setProjects] = useState([]);
   const [skills, setSkills] = useState([]);
@@ -185,7 +187,13 @@ const Resume = () => {
   if (!portfolio) {
     return (
       <div className="container py-4">
-        <p>No portfolio found</p>
+        <div className="card">
+          <div className="card-body">
+            <h1 className="card-title">Resume & Profile</h1>
+            <p className="card-text">You don't have a portfolio yet. Create one to build your resume.</p>
+            <button className="btn btn-primary" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
+          </div>
+        </div>
       </div>
     );
   }
