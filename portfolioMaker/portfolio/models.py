@@ -116,6 +116,7 @@ class Skill(models.Model):
         choices=ItemStatus.choices,
         default=ItemStatus.DRAFT
     )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.name} ({self.proficiency_level})"
@@ -138,9 +139,7 @@ class Education(models.Model):
         choices=ItemStatus.choices,
         default=ItemStatus.DRAFT
     )
-
-    def __str__(self):
-        return f"{self.institution} - {self.degree}"
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 # endregion
 
 # region: Social Link Model
@@ -158,9 +157,7 @@ class SocialLink(models.Model):
         choices=ItemStatus.choices,
         default=ItemStatus.DRAFT
     )
-
-    def __str__(self):
-        return self.platform
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 # endregion
 
 # region: Profile View Model
@@ -255,7 +252,11 @@ class PortfolioVersion(models.Model):
     # Snapshot data
     title = models.CharField(max_length=150)
     summary = models.TextField()
-    status = models.CharField(max_length=20)
+    status = models.CharField(
+        max_length=20,
+        choices=PortfolioStatus.choices,
+        default=PortfolioStatus.DRAFT
+    )
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
@@ -275,4 +276,3 @@ class PortfolioVersion(models.Model):
     def __str__(self):
         return f"{self.portfolio.user.username} - v{self.version_number}"
 # endregion
-

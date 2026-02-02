@@ -189,7 +189,8 @@ class ProjectListCreateView(GenericAPIView):
         service = ProjectService()
         project = service.create_project(
             portfolio=portfolio,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(project)
         logger.info(f"Project created: id={project.id} title={project.title} portfolio_id={portfolio_id} user_id={request.user.id}")
@@ -229,7 +230,8 @@ class ProjectDetailView(GenericAPIView):
         service = ProjectService()
         updated_project = service.update_project(
             project=project,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(updated_project)
         logger.info(f"Project updated: id={updated_project.id} title={updated_project.title} user_id={request.user.id}")
@@ -241,7 +243,7 @@ class ProjectDetailView(GenericAPIView):
         self.check_object_permissions(request, portfolio)
         project_id = project.id
         service = ProjectService()
-        service.delete_project(project=project)
+        service.delete_project(project=project, user=request.user)
         logger.info(f"Project deleted: id={project_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -272,7 +274,8 @@ class SkillListCreateView(GenericAPIView):
         service = SkillService()
         skill = service.create_skill(
             portfolio=portfolio,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(skill)
         logger.info(f"Skill created: id={skill.id} name={skill.name} portfolio_id={portfolio_id} user_id={request.user.id}")
@@ -310,7 +313,8 @@ class SkillDetailView(GenericAPIView):
         service = SkillService()
         updated_skill = service.update_skill(
             skill=skill,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(updated_skill)
         logger.info(f"Skill updated: id={updated_skill.id} name={updated_skill.name} user_id={request.user.id}")
@@ -322,7 +326,7 @@ class SkillDetailView(GenericAPIView):
         self.check_object_permissions(request, portfolio)
         skill_id = skill.id
         service = SkillService()
-        service.delete_skill(skill=skill)
+        service.delete_skill(skill=skill, user=request.user)
         logger.info(f"Skill deleted: id={skill_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion
@@ -352,7 +356,8 @@ class EducationListCreateView(GenericAPIView):
         service = EducationService()
         education = service.create_education(
             portfolio=portfolio,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(education)
         logger.info(f"Education created: id={education.id} institution={education.institution} portfolio_id={portfolio_id} user_id={request.user.id}")
@@ -390,7 +395,8 @@ class EducationDetailView(GenericAPIView):
         service = EducationService()
         updated_education = service.update_education(
             education=education,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(updated_education)
         logger.info(f"Education updated: id={updated_education.id} institution={updated_education.institution} user_id={request.user.id}")
@@ -402,7 +408,7 @@ class EducationDetailView(GenericAPIView):
         self.check_object_permissions(request, portfolio)
         education_id = education.id
         service = EducationService()
-        service.delete_education(education=education)
+        service.delete_education(education=education, user=request.user)
         logger.info(f"Education deleted: id={education_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion
@@ -432,7 +438,8 @@ class SocialLinkListCreateView(GenericAPIView):
         service = SocialLinkService()
         social_link = service.create_social_link(
             portfolio=portfolio,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(social_link)
         logger.info(f"SocialLink created: id={social_link.id} platform={social_link.platform} portfolio_id={portfolio_id} user_id={request.user.id}")
@@ -470,7 +477,8 @@ class SocialLinkDetailView(GenericAPIView):
         service = SocialLinkService()
         updated_social_link = service.update_social_link(
             social_link=social_link,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(updated_social_link)
         logger.info(f"SocialLink updated: id={updated_social_link.id} platform={updated_social_link.platform} user_id={request.user.id}")
@@ -482,7 +490,7 @@ class SocialLinkDetailView(GenericAPIView):
         self.check_object_permissions(request, portfolio)
         social_link_id = social_link.id
         service = SocialLinkService()
-        service.delete_social_link(social_link=social_link)
+        service.delete_social_link(social_link=social_link, user=request.user)
         logger.info(f"SocialLink deleted: id={social_link_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion
@@ -512,7 +520,8 @@ class DocumentListCreateView(GenericAPIView):
         service = DocumentService()
         document = service.create_document(
             portfolio=portfolio,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(document)
         logger.info(f"Document created: id={document.id} doc_type={document.doc_type} portfolio_id={portfolio_id} user_id={request.user.id}")
@@ -550,7 +559,8 @@ class DocumentDetailView(GenericAPIView):
         service = DocumentService()
         updated_document = service.update_document(
             document=document,
-            data=serializer.validated_data
+            data=serializer.validated_data,
+            user=request.user
         )
         output_serializer = self.get_serializer(updated_document)
         logger.info(f"Document updated: id={updated_document.id} doc_type={updated_document.doc_type} user_id={request.user.id}")
@@ -562,7 +572,7 @@ class DocumentDetailView(GenericAPIView):
         self.check_object_permissions(request, portfolio)
         document_id = document.id
         service = DocumentService()
-        service.delete_document(document=document)
+        service.delete_document(document=document, user=request.user)
         logger.info(f"Document deleted: id={document_id} user_id={request.user.id}")
         return Response(status=status.HTTP_204_NO_CONTENT)
 # endregion

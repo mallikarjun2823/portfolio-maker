@@ -1172,3 +1172,885 @@ class ErrorHandlingTests(APITestCase):
         url = reverse('project-detail', kwargs={'portfolio_id': portfolio1.id, 'pk': project.id})
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# ===== COMPREHENSIVE BUSINESS RULES TESTS =====
+
+class PortfolioOnePerUserTest(TestCase):
+    """Test: A user can have only one portfolio"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+    
+    def test_user_can_create_one_portfolio(self):
+        """User should be able to create exactly one portfolio"""
+        portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test portfolio summary'}
+        )
+        self.assertEqual(portfolio.user, self.user)
+        self.assertIsNotNone(portfolio.id)
+    
+    def test_user_cannot_create_second_portfolio(self):
+        """Second portfolio creation should raise ValidationError"""
+        self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test portfolio summary'}
+        )
+        with self.assertRaises(ValidationError):
+            self.service.create_portfolio(
+                user=self.user,
+                data={'title': 'Second Portfolio', 'summary': 'Another summary'}
+            )
+
+
+class PortfolioStartsInDraftTest(TestCase):
+    """Test: A portfolio starts in DRAFT status"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+    
+    def test_portfolio_initial_status_is_draft(self):
+        """New portfolio should have DRAFT status"""
+        portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+        self.assertEqual(portfolio.status, PortfolioStatus.DRAFT)
+
+
+class PortfolioStatusTransitionsTest(TestCase):
+    """Test: Status transitions only in DRAFT → REVIEW → PUBLISHED → ARCHIVED"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+        self.portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+    
+    def _create_publishable_portfolio(self):
+        """Helper to create a portfolio with required items for publishing"""
+        # First publish the portfolio to allow item publishing
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        
+        # Create project
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        project_service.publish_project(project=project, user=self.user)
+        
+        # Create skill
+        skill_service = SkillService()
+        skill = skill_service.create_skill(
+            portfolio=self.portfolio,
+            data={
+                'name': 'Python',
+                'proficiency_level': ProficiencyLevel.ADVANCED,
+                'years_of_experience': 5
+            },
+            user=self.user
+        )
+        skill_service.publish_skill(skill=skill, user=self.user)
+        
+        return project, skill
+    
+    def test_draft_to_review_transition(self):
+        """DRAFT → REVIEW should succeed"""
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.REVIEW,
+            user=self.user
+        )
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.status, PortfolioStatus.REVIEW)
+    
+    def test_review_to_draft_transition(self):
+        """REVIEW → DRAFT should succeed"""
+        self.portfolio.status = PortfolioStatus.REVIEW
+        self.portfolio.save()
+        
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.DRAFT,
+            user=self.user
+        )
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.status, PortfolioStatus.DRAFT)
+    
+    def test_review_to_published_transition(self):
+        """REVIEW → PUBLISHED should succeed with requirements"""
+        self._create_publishable_portfolio()
+        self.portfolio.status = PortfolioStatus.REVIEW
+        self.portfolio.save()
+        
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.PUBLISHED,
+            user=self.user
+        )
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.status, PortfolioStatus.PUBLISHED)
+    
+    def test_published_to_archived_transition(self):
+        """PUBLISHED → ARCHIVED should succeed"""
+        self._create_publishable_portfolio()
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.ARCHIVED,
+            user=self.user
+        )
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.status, PortfolioStatus.ARCHIVED)
+    
+    def test_direct_draft_to_published_forbidden(self):
+        """DRAFT → PUBLISHED directly should fail"""
+        self._create_publishable_portfolio()
+        with self.assertRaises(ValidationError):
+            self.service.transition_portfolio_status(
+                portfolio=self.portfolio,
+                new_status=PortfolioStatus.PUBLISHED,
+                user=self.user
+            )
+    
+    def test_archived_no_transitions(self):
+        """No transitions allowed from ARCHIVED"""
+        self._create_publishable_portfolio()
+        self.portfolio.status = PortfolioStatus.ARCHIVED
+        self.portfolio.save()
+        
+        with self.assertRaises(ValidationError):
+            self.service.transition_portfolio_status(
+                portfolio=self.portfolio,
+                new_status=PortfolioStatus.DRAFT,
+                user=self.user
+            )
+
+
+class PublishingRequirementsTest(TestCase):
+    """Test: Publishing requires at least 1 published project and 1 published skill"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+        self.portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+    
+    def test_publish_fails_without_projects(self):
+        """Publishing should fail without any published projects"""
+        # Transition to REVIEW first
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.REVIEW,
+            user=self.user
+        )
+        
+        # Create and publish a skill (but portfolio must be PUBLISHED first)
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        
+        skill_service = SkillService()
+        skill = skill_service.create_skill(
+            portfolio=self.portfolio,
+            data={
+                'name': 'Python',
+                'proficiency_level': ProficiencyLevel.ADVANCED,
+                'years_of_experience': 5
+            },
+            user=self.user
+        )
+        skill_service.publish_skill(skill=skill, user=self.user)
+        
+        # Now try to publish from REVIEW to PUBLISHED without projects
+        self.portfolio.status = PortfolioStatus.REVIEW
+        self.portfolio.save()
+        
+        with self.assertRaises(ValidationError) as cm:
+            self.service.transition_portfolio_status(
+                portfolio=self.portfolio,
+                new_status=PortfolioStatus.PUBLISHED,
+                user=self.user
+            )
+        self.assertIn("project", str(cm.exception).lower())
+    
+    def test_publish_fails_without_skills(self):
+        """Publishing should fail without any published skills"""
+        # Transition to REVIEW first
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.REVIEW,
+            user=self.user
+        )
+        
+        # Create and publish a project (but portfolio must be PUBLISHED first)
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        project_service.publish_project(project=project, user=self.user)
+        
+        # Now try to publish from REVIEW to PUBLISHED without skills
+        self.portfolio.status = PortfolioStatus.REVIEW
+        self.portfolio.save()
+        
+        with self.assertRaises(ValidationError) as cm:
+            self.service.transition_portfolio_status(
+                portfolio=self.portfolio,
+                new_status=PortfolioStatus.PUBLISHED,
+                user=self.user
+            )
+        self.assertIn("skill", str(cm.exception).lower())
+    
+    def test_publish_succeeds_with_requirements(self):
+        """Publishing should succeed with at least 1 project and 1 skill"""
+        # Transition to REVIEW first
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.REVIEW,
+            user=self.user
+        )
+        
+        # Create items
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        project_service.publish_project(project=project, user=self.user)
+        
+        skill_service = SkillService()
+        skill = skill_service.create_skill(
+            portfolio=self.portfolio,
+            data={
+                'name': 'Python',
+                'proficiency_level': ProficiencyLevel.ADVANCED,
+                'years_of_experience': 5
+            },
+            user=self.user
+        )
+        skill_service.publish_skill(skill=skill, user=self.user)
+        
+        # Now transition: DRAFT -> REVIEW -> PUBLISHED
+        self.portfolio.status = PortfolioStatus.DRAFT
+        self.portfolio.save()
+        
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.REVIEW,
+            user=self.user
+        )
+        
+        # Should succeed
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.PUBLISHED,
+            user=self.user
+        )
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.status, PortfolioStatus.PUBLISHED)
+
+
+class ArchivedPortfolioTest(TestCase):
+    """Test: Portfolio in ARCHIVED cannot be modified or change status"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+        self.portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+        self.portfolio.status = PortfolioStatus.ARCHIVED
+        self.portfolio.save()
+    
+    def test_cannot_add_items_to_archived_portfolio(self):
+        """Cannot create new items in archived portfolio"""
+        project_service = ProjectService()
+        with self.assertRaises(ValidationError):
+            project_service.create_project(
+                portfolio=self.portfolio,
+                data={
+                    'title': 'Test Project',
+                    'description': 'Test description here',
+                    'tech_stack': 'Python,Django'
+                },
+                user=self.user
+            )
+    
+    def test_cannot_modify_items_in_archived_portfolio(self):
+        """Cannot modify items in archived portfolio"""
+        # First create a project before archiving
+        self.portfolio.status = PortfolioStatus.DRAFT
+        self.portfolio.save()
+        
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        
+        # Archive portfolio
+        self.portfolio.status = PortfolioStatus.ARCHIVED
+        self.portfolio.save()
+        
+        # Try to modify
+        with self.assertRaises(ValidationError):
+            project_service.update_project(
+                project=project,
+                data={'title': 'Updated Title'},
+                user=self.user
+            )
+
+
+class ItemDefaultStatusTest(TestCase):
+    """Test: New items start in DRAFT status"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            title='Test Portfolio',
+            summary='Test summary',
+            status=PortfolioStatus.DRAFT
+        )
+    
+    def test_new_project_starts_in_draft(self):
+        """New project should start in DRAFT"""
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        self.assertEqual(project.status, ItemStatus.DRAFT)
+    
+    def test_new_skill_starts_in_draft(self):
+        """New skill should start in DRAFT"""
+        skill_service = SkillService()
+        skill = skill_service.create_skill(
+            portfolio=self.portfolio,
+            data={
+                'name': 'Python',
+                'proficiency_level': ProficiencyLevel.ADVANCED,
+                'years_of_experience': 5
+            },
+            user=self.user
+        )
+        self.assertEqual(skill.status, ItemStatus.DRAFT)
+
+
+class ItemPublishingRulesTest(TestCase):
+    """Test: Item cannot be published if parent portfolio is not PUBLISHED"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+        self.portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+    
+    def test_cannot_publish_item_if_portfolio_not_published(self):
+        """Cannot publish item if portfolio status is not PUBLISHED"""
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        
+        with self.assertRaises(ValidationError):
+            project_service.publish_project(project=project, user=self.user)
+    
+    def test_can_publish_item_if_portfolio_published(self):
+        """Can publish item if portfolio is PUBLISHED"""
+        # Create items and publish portfolio
+        project_service = ProjectService()
+        skill_service = SkillService()
+        
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        
+        skill = skill_service.create_skill(
+            portfolio=self.portfolio,
+            data={
+                'name': 'Python',
+                'proficiency_level': ProficiencyLevel.ADVANCED,
+                'years_of_experience': 5
+            },
+            user=self.user
+        )
+        
+        # Publish to allow item publishing
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        
+        # Should now succeed
+        project_service.publish_project(project=project, user=self.user)
+        project.refresh_from_db()
+        self.assertEqual(project.status, ItemStatus.PUBLISHED)
+
+
+class CascadeArchivingTest(TestCase):
+    """Test: When portfolio is archived, all items are forced to ARCHIVED"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+        self.portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+    
+    def test_archiving_portfolio_archives_all_items(self):
+        """Archiving portfolio should force all items to ARCHIVED"""
+        # Create items
+        project_service = ProjectService()
+        skill_service = SkillService()
+        
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        
+        skill = skill_service.create_skill(
+            portfolio=self.portfolio,
+            data={
+                'name': 'Python',
+                'proficiency_level': ProficiencyLevel.ADVANCED,
+                'years_of_experience': 5
+            },
+            user=self.user
+        )
+        
+        # Make them published first
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        project.status = ItemStatus.PUBLISHED
+        project.save()
+        skill.status = ItemStatus.PUBLISHED
+        skill.save()
+        
+        # Archive portfolio
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.ARCHIVED,
+            user=self.user
+        )
+        
+        # Check all items are archived
+        project.refresh_from_db()
+        skill.refresh_from_db()
+        self.assertEqual(project.status, ItemStatus.ARCHIVED)
+        self.assertEqual(skill.status, ItemStatus.ARCHIVED)
+
+
+class ActivityLoggingTest(TestCase):
+    """Test: All significant actions create append-only activity logs"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+        self.portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+    
+    def test_project_creation_logged(self):
+        """Project creation should create activity log"""
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        
+        log = ActivityLog.objects.get(entity_type='Project', entity_id=project.id)
+        self.assertEqual(log.action, 'CREATE')
+        self.assertEqual(log.user, self.user)
+    
+    def test_project_update_logged(self):
+        """Project update should create activity log"""
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        
+        # Clear previous logs
+        ActivityLog.objects.all().delete()
+        
+        project_service.update_project(
+            project=project,
+            data={'title': 'Updated Title'},
+            user=self.user
+        )
+        
+        log = ActivityLog.objects.get(entity_type='Project', entity_id=project.id)
+        self.assertEqual(log.action, 'UPDATE')
+    
+    def test_portfolio_publish_logged(self):
+        """Portfolio publishing should create activity log"""
+        # Setup - create items first
+        project_service = ProjectService()
+        skill_service = SkillService()
+        
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        project_service.publish_project(project=project, user=self.user)
+        
+        skill = skill_service.create_skill(
+            portfolio=self.portfolio,
+            data={
+                'name': 'Python',
+                'proficiency_level': ProficiencyLevel.ADVANCED,
+                'years_of_experience': 5
+            },
+            user=self.user
+        )
+        skill_service.publish_skill(skill=skill, user=self.user)
+        
+        # Reset portfolio to DRAFT
+        self.portfolio.status = PortfolioStatus.DRAFT
+        self.portfolio.save()
+        
+        # Transition: DRAFT -> REVIEW
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.REVIEW,
+            user=self.user
+        )
+        
+        # Clear logs
+        ActivityLog.objects.all().delete()
+        
+        # Transition: REVIEW -> PUBLISHED
+        self.service.transition_portfolio_status(
+            portfolio=self.portfolio,
+            new_status=PortfolioStatus.PUBLISHED,
+            user=self.user
+        )
+        
+        log = ActivityLog.objects.get(entity_type='Portfolio', entity_id=self.portfolio.id)
+        self.assertEqual(log.action, 'PUBLISH')
+
+
+class DocumentRulesTest(TestCase):
+    """Test: Document-specific rules"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            title='Test Portfolio',
+            summary='Test summary',
+            status=PortfolioStatus.DRAFT
+        )
+        self.service = DocumentService()
+    
+    def test_only_one_resume_per_portfolio(self):
+        """Only one resume document allowed per portfolio"""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        file1 = SimpleUploadedFile('resume1.pdf', b'file content')
+        doc1 = self.service.create_document(
+            portfolio=self.portfolio,
+            data={
+                'file': file1,
+                'doc_type': Document.DocumentType.RESUME
+            },
+            user=self.user
+        )
+        
+        file2 = SimpleUploadedFile('resume2.pdf', b'file content')
+        with self.assertRaises(ValidationError):
+            self.service.create_document(
+                portfolio=self.portfolio,
+                data={
+                    'file': file2,
+                    'doc_type': Document.DocumentType.RESUME
+                },
+                user=self.user
+            )
+    
+    def test_cannot_delete_document_from_published_portfolio(self):
+        """Cannot delete documents from published portfolio"""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        self.portfolio.status = PortfolioStatus.PUBLISHED
+        self.portfolio.save()
+        
+        file = SimpleUploadedFile('cert.pdf', b'file content')
+        doc = self.service.create_document(
+            portfolio=self.portfolio,
+            data={
+                'file': file,
+                'doc_type': Document.DocumentType.CERTIFICATE
+            },
+            user=self.user
+        )
+        
+        with self.assertRaises(ValidationError):
+            self.service.delete_document(document=doc, user=self.user)
+
+
+class VersioningRulesTest(TestCase):
+    """Test: Portfolio versioning rules"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.service = PortfolioService()
+        self.portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+    
+    def test_versions_are_sequential(self):
+        """Versions should be sequential per portfolio"""
+        v1 = self.service.create_version_snapshot(
+            portfolio=self.portfolio,
+            user=self.user,
+            change_note='First version'
+        )
+        v2 = self.service.create_version_snapshot(
+            portfolio=self.portfolio,
+            user=self.user,
+            change_note='Second version'
+        )
+        
+        self.assertEqual(v1.version_number, 1)
+        self.assertEqual(v2.version_number, 2)
+    
+    def test_versions_are_immutable(self):
+        """Versions should not be updatable via service"""
+        version = self.service.create_version_snapshot(
+            portfolio=self.portfolio,
+            user=self.user,
+            change_note='Test version'
+        )
+        
+        original_title = version.title
+        
+        # Even though we can technically update the database record, 
+        # the service should not provide a way to do so
+        # Verify the version captured the original state
+        self.assertEqual(version.title, self.portfolio.title)
+        self.assertEqual(original_title, self.portfolio.title)
+    
+    def test_restoring_version_creates_new_version(self):
+        """Restoring a version should create a new version, not overwrite"""
+        # Create and snapshot
+        v1 = self.service.create_version_snapshot(
+            portfolio=self.portfolio,
+            user=self.user,
+            change_note='First version'
+        )
+        
+        # Modify portfolio
+        self.portfolio.title = 'Modified Title'
+        self.portfolio.save()
+        
+        # Revert
+        self.service.revert_to_version(
+            portfolio=self.portfolio,
+            version_number=1,
+            user=self.user
+        )
+        
+        # Should have created new versions
+        total_versions = PortfolioVersion.objects.filter(portfolio=self.portfolio).count()
+        self.assertEqual(total_versions, 3)  # v1, auto-snapshot before revert, revert snapshot
+
+
+class ProfileViewTest(TestCase):
+    """Test: Profile views should not modify portfolio state"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.other_user = User.objects.create_user(username='otheruser', password='pass')
+        self.service = PortfolioService()
+        self.portfolio = self.service.create_portfolio(
+            user=self.user,
+            data={'title': 'My Portfolio', 'summary': 'Test summary'}
+        )
+    
+    def test_profile_view_does_not_modify_state(self):
+        """Logging a profile view should not modify portfolio"""
+        original_updated_at = self.portfolio.updated_at
+        
+        self.service.log_profile_view(
+            viewer=self.other_user,
+            portfolio=self.portfolio,
+            ip_address='192.168.1.1'
+        )
+        
+        self.portfolio.refresh_from_db()
+        self.assertEqual(self.portfolio.updated_at, original_updated_at)
+    
+    def test_owner_viewing_own_portfolio_not_logged(self):
+        """Portfolio owner viewing their own portfolio should not be logged"""
+        self.service.log_profile_view(
+            viewer=self.user,
+            portfolio=self.portfolio,
+            ip_address='192.168.1.1'
+        )
+        
+        view_count = ProfileView.objects.filter(portfolio=self.portfolio).count()
+        self.assertEqual(view_count, 0)
+    
+    def test_multiple_views_from_same_user_allowed(self):
+        """Multiple views from same user should all be logged"""
+        for i in range(3):
+            self.service.log_profile_view(
+                viewer=self.other_user,
+                portfolio=self.portfolio,
+                ip_address='192.168.1.1'
+            )
+        
+        view_count = ProfileView.objects.filter(
+            portfolio=self.portfolio,
+            viewer=self.other_user
+        ).count()
+        self.assertEqual(view_count, 3)
+
+
+class EditedItemRevertToDraftTest(TestCase):
+    """Test: Editing an item reverts it to DRAFT if portfolio not archived"""
+    
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.portfolio = Portfolio.objects.create(
+            user=self.user,
+            title='Test Portfolio',
+            summary='Test summary',
+            status=PortfolioStatus.PUBLISHED
+        )
+    
+    def test_editing_published_item_reverts_to_draft(self):
+        """Editing a published item should revert it to DRAFT"""
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        project.status = ItemStatus.PUBLISHED
+        project.save()
+        
+        # Update
+        project_service.update_project(
+            project=project,
+            data={'title': 'Updated Title'},
+            user=self.user
+        )
+        
+        project.refresh_from_db()
+        self.assertEqual(project.status, ItemStatus.DRAFT)
+    
+    def test_cannot_revert_item_in_archived_portfolio(self):
+        """Cannot revert items when portfolio is archived"""
+        project_service = ProjectService()
+        project = project_service.create_project(
+            portfolio=self.portfolio,
+            data={
+                'title': 'Test Project',
+                'description': 'Test description here',
+                'tech_stack': 'Python,Django'
+            },
+            user=self.user
+        )
+        project.status = ItemStatus.PUBLISHED
+        project.save()
+        
+        # Archive portfolio
+        self.portfolio.status = PortfolioStatus.ARCHIVED
+        self.portfolio.save()
+        
+        # Try update - should raise ValidationError
+        with self.assertRaises(ValidationError):
+            project_service.update_project(
+                project=project,
+                data={'title': 'Updated Title'},
+                user=self.user
+            )

@@ -176,5 +176,9 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+
+# Set default auto field to BigAutoField to avoid warnings
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+ 
 # Note: install with `pip install django-debug-toolbar` and runserver to see the toolbar
 # For secure environments, enable the toolbar only on internal networks

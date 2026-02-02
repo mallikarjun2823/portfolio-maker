@@ -41,23 +41,94 @@ class ProjectService:
         except models.Project.DoesNotExist:
             return None
 
-    def create_project(self, *, portfolio, data):
-        return models.Project.objects.create(
+    def create_project(self, *, portfolio, data, user=None):
+        """
+        Create a project with business rule enforcement:
+        - Portfolio must not be ARCHIVED
+        - New items start in DRAFT
+        """
+        portfolio_service = PortfolioService()
+        if portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot add items to an archived portfolio")
+        
+        project = models.Project.objects.create(
             portfolio=portfolio,
             title=data["title"],
             description=data["description"],
             tech_stack=data["tech_stack"],
-            project_url=data.get("project_url")
+            project_url=data.get("project_url", ""),
+            status=models.ItemStatus.DRAFT
         )
-
-    def update_project(self, *, project, data):
-        for field, value in data.items():
-            setattr(project, field, value)
-        project.save()
+        
+        # Log activity
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="CREATE",
+                entity_type="Project",
+                entity_id=project.id
+            )
+        
         return project
 
-    def delete_project(self, *, project):
+    def update_project(self, *, project, data, user=None):
+        """
+        Update a project with business rules:
+        - Cannot update if portfolio is ARCHIVED
+        - Auto-revert to DRAFT if item was modified and portfolio is not archived
+        """
+        portfolio_service = PortfolioService()
+        
+        if project.portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot modify items in an archived portfolio")
+        
+        for field, value in data.items():
+            if field != 'status':  # Don't allow direct status changes via update
+                setattr(project, field, value)
+        
+        # Auto-revert to DRAFT if not already published
+        if project.status == models.ItemStatus.PUBLISHED:
+            project.status = models.ItemStatus.DRAFT
+        
+        project.save()
+        
+        # Log activity
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="UPDATE",
+                entity_type="Project",
+                entity_id=project.id
+            )
+        
+        return project
+
+    def publish_project(self, *, project, user):
+        """Publish a project with validation"""
+        portfolio_service = PortfolioService()
+        portfolio_service.publish_item(
+            item=project,
+            portfolio=project.portfolio,
+            user=user,
+            model_type="Project"
+        )
+
+    def delete_project(self, *, project, user=None):
+        """Delete project with restrictions"""
+        if project.portfolio.status == models.PortfolioStatus.PUBLISHED:
+            raise ValidationError("Cannot delete items from a published portfolio")
+        
+        portfolio_service = PortfolioService()
+        project_id = project.id
         project.delete()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="DELETE",
+                entity_type="Project",
+                entity_id=project_id
+            )
 # endregion
 
 # region: Skill Service
@@ -72,26 +143,91 @@ class SkillService:
         return models.Skill.objects.filter(portfolio=portfolio)
 
     def list_public_skills_for_portfolio(self, portfolio):
-        # Assuming skills are always visible if portfolio is public, but since no is_public on skill, return all for now
-        return self.list_skills_for_portfolio(portfolio)
+        return models.Skill.objects.filter(portfolio=portfolio, status=models.ItemStatus.PUBLISHED)
 
-    def create_skill(self, *, portfolio, data):
-        return models.Skill.objects.create(
+    def create_skill(self, *, portfolio, data, user=None):
+        """
+        Create a skill with business rule enforcement:
+        - Portfolio must not be ARCHIVED
+        - New items start in DRAFT
+        """
+        portfolio_service = PortfolioService()
+        
+        if portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot add items to an archived portfolio")
+        
+        skill = models.Skill.objects.create(
             portfolio=portfolio,
             name=data["name"],
             proficiency_level=data["proficiency_level"],
             years_of_experience=data["years_of_experience"],
-            skill_certification=data.get("skill_certification")
+            skill_certification=data.get("skill_certification"),
+            status=models.ItemStatus.DRAFT
         )
-
-    def update_skill(self, *, skill, data):
-        for field, value in data.items():
-            setattr(skill, field, value)
-        skill.save()
+        
+        # Log activity
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="CREATE",
+                entity_type="Skill",
+                entity_id=skill.id
+            )
+        
         return skill
 
-    def delete_skill(self, *, skill):
+    def update_skill(self, *, skill, data, user=None):
+        """Update a skill with business rules"""
+        portfolio_service = PortfolioService()
+        
+        if skill.portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot modify items in an archived portfolio")
+        
+        for field, value in data.items():
+            if field != 'status':
+                setattr(skill, field, value)
+        
+        if skill.status == models.ItemStatus.PUBLISHED:
+            skill.status = models.ItemStatus.DRAFT
+        
+        skill.save()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="UPDATE",
+                entity_type="Skill",
+                entity_id=skill.id
+            )
+        
+        return skill
+
+    def publish_skill(self, *, skill, user):
+        """Publish a skill with validation"""
+        portfolio_service = PortfolioService()
+        portfolio_service.publish_item(
+            item=skill,
+            portfolio=skill.portfolio,
+            user=user,
+            model_type="Skill"
+        )
+
+    def delete_skill(self, *, skill, user=None):
+        """Delete skill with restrictions"""
+        if skill.portfolio.status == models.PortfolioStatus.PUBLISHED:
+            raise ValidationError("Cannot delete items from a published portfolio")
+        
+        portfolio_service = PortfolioService()
+        skill_id = skill.id
         skill.delete()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="DELETE",
+                entity_type="Skill",
+                entity_id=skill_id
+            )
 # endregion
 
 # region: Education Service
@@ -106,25 +242,86 @@ class EducationService:
         return models.Education.objects.filter(portfolio=portfolio)
 
     def list_public_education_for_portfolio(self, portfolio):
-        return self.list_education_for_portfolio(portfolio)
+        return models.Education.objects.filter(portfolio=portfolio, status=models.ItemStatus.PUBLISHED)
 
-    def create_education(self, *, portfolio, data):
-        return models.Education.objects.create(
+    def create_education(self, *, portfolio, data, user=None):
+        """Create an education entry with business rules"""
+        portfolio_service = PortfolioService()
+        
+        if portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot add items to an archived portfolio")
+        
+        education = models.Education.objects.create(
             portfolio=portfolio,
             institution=data["institution"],
             degree=data["degree"],
             start_year=data["start_year"],
-            end_year=data.get("end_year")
+            end_year=data.get("end_year"),
+            status=models.ItemStatus.DRAFT
         )
-
-    def update_education(self, *, education, data):
-        for field, value in data.items():
-            setattr(education, field, value)
-        education.save()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="CREATE",
+                entity_type="Education",
+                entity_id=education.id
+            )
+        
         return education
 
-    def delete_education(self, *, education):
+    def update_education(self, *, education, data, user=None):
+        """Update education with business rules"""
+        portfolio_service = PortfolioService()
+        
+        if education.portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot modify items in an archived portfolio")
+        
+        for field, value in data.items():
+            if field != 'status':
+                setattr(education, field, value)
+        
+        if education.status == models.ItemStatus.PUBLISHED:
+            education.status = models.ItemStatus.DRAFT
+        
+        education.save()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="UPDATE",
+                entity_type="Education",
+                entity_id=education.id
+            )
+        
+        return education
+
+    def publish_education(self, *, education, user):
+        """Publish education with validation"""
+        portfolio_service = PortfolioService()
+        portfolio_service.publish_item(
+            item=education,
+            portfolio=education.portfolio,
+            user=user,
+            model_type="Education"
+        )
+
+    def delete_education(self, *, education, user=None):
+        """Delete education with restrictions"""
+        if education.portfolio.status == models.PortfolioStatus.PUBLISHED:
+            raise ValidationError("Cannot delete items from a published portfolio")
+        
+        portfolio_service = PortfolioService()
+        education_id = education.id
         education.delete()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="DELETE",
+                entity_type="Education",
+                entity_id=education_id
+            )
 # endregion
 
 # region: SocialLink Service
@@ -139,23 +336,84 @@ class SocialLinkService:
         return models.SocialLink.objects.filter(portfolio=portfolio)
 
     def list_public_social_links_for_portfolio(self, portfolio):
-        return self.list_social_links_for_portfolio(portfolio)
+        return models.SocialLink.objects.filter(portfolio=portfolio, status=models.ItemStatus.PUBLISHED)
 
-    def create_social_link(self, *, portfolio, data):
-        return models.SocialLink.objects.create(
+    def create_social_link(self, *, portfolio, data, user=None):
+        """Create a social link with business rules"""
+        portfolio_service = PortfolioService()
+        
+        if portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot add items to an archived portfolio")
+        
+        social_link = models.SocialLink.objects.create(
             portfolio=portfolio,
             platform=data["platform"],
-            url=data["url"]
+            url=data["url"],
+            status=models.ItemStatus.DRAFT
         )
-
-    def update_social_link(self, *, social_link, data):
-        for field, value in data.items():
-            setattr(social_link, field, value)
-        social_link.save()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="CREATE",
+                entity_type="SocialLink",
+                entity_id=social_link.id
+            )
+        
         return social_link
 
-    def delete_social_link(self, *, social_link):
+    def update_social_link(self, *, social_link, data, user=None):
+        """Update social link with business rules"""
+        portfolio_service = PortfolioService()
+        
+        if social_link.portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot modify items in an archived portfolio")
+        
+        for field, value in data.items():
+            if field != 'status':
+                setattr(social_link, field, value)
+        
+        if social_link.status == models.ItemStatus.PUBLISHED:
+            social_link.status = models.ItemStatus.DRAFT
+        
+        social_link.save()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="UPDATE",
+                entity_type="SocialLink",
+                entity_id=social_link.id
+            )
+        
+        return social_link
+
+    def publish_social_link(self, *, social_link, user):
+        """Publish social link with validation"""
+        portfolio_service = PortfolioService()
+        portfolio_service.publish_item(
+            item=social_link,
+            portfolio=social_link.portfolio,
+            user=user,
+            model_type="SocialLink"
+        )
+
+    def delete_social_link(self, *, social_link, user=None):
+        """Delete social link with restrictions"""
+        if social_link.portfolio.status == models.PortfolioStatus.PUBLISHED:
+            raise ValidationError("Cannot delete items from a published portfolio")
+        
+        portfolio_service = PortfolioService()
+        social_link_id = social_link.id
         social_link.delete()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="DELETE",
+                entity_type="SocialLink",
+                entity_id=social_link_id
+            )
 # endregion
 
 # region: Document Service
@@ -172,26 +430,100 @@ class DocumentService:
     def list_public_documents_for_portfolio(self, portfolio):
         return models.Document.objects.filter(portfolio=portfolio, status=models.ItemStatus.PUBLISHED)
 
-    def create_document(self, *, portfolio, data):
-        # Business rule: only one resume per portfolio
-        if data.get("doc_type") == models.Document.DocumentType.RESUME and models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
-            raise ValidationError("Only one resume allowed per portfolio")
-        status = data.get("status", models.ItemStatus.DRAFT)
-        return models.Document.objects.create(
+    def create_document(self, *, portfolio, data, user=None):
+        """
+        Create a document with business rules:
+        - Only one resume per portfolio
+        - Documents start in DRAFT
+        - Document type cannot change after creation
+        """
+        portfolio_service = PortfolioService()
+        
+        if portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot add items to an archived portfolio")
+        
+        if data.get("doc_type") == models.Document.DocumentType.RESUME:
+            if models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
+                raise ValidationError("Only one resume allowed per portfolio")
+        
+        document = models.Document.objects.create(
             portfolio=portfolio,
             file=data["file"],
             doc_type=data["doc_type"],
-            status=status
+            status=models.ItemStatus.DRAFT
         )
-
-    def update_document(self, *, document, data):
-        for field, value in data.items():
-            setattr(document, field, value)
-        document.save()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="CREATE",
+                entity_type="Document",
+                entity_id=document.id
+            )
+        
         return document
 
-    def delete_document(self, *, document):
+    def update_document(self, *, document, data, user=None):
+        """
+        Update a document with business rules:
+        - Cannot change doc_type after upload
+        - Cannot update if portfolio is ARCHIVED
+        """
+        portfolio_service = PortfolioService()
+        
+        if document.portfolio.status == models.PortfolioStatus.ARCHIVED:
+            raise ValidationError("Cannot modify items in an archived portfolio")
+        
+        for field, value in data.items():
+            if field == 'doc_type':
+                raise ValidationError("Cannot change document type after upload")
+            if field != 'status':
+                setattr(document, field, value)
+        
+        if document.status == models.ItemStatus.PUBLISHED:
+            document.status = models.ItemStatus.DRAFT
+        
+        document.save()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="UPDATE",
+                entity_type="Document",
+                entity_id=document.id
+            )
+        
+        return document
+
+    def publish_document(self, *, document, user):
+        """Publish document with validation"""
+        portfolio_service = PortfolioService()
+        portfolio_service.publish_item(
+            item=document,
+            portfolio=document.portfolio,
+            user=user,
+            model_type="Document"
+        )
+
+    def delete_document(self, *, document, user=None):
+        """
+        Delete document with restrictions:
+        - Cannot delete if portfolio is PUBLISHED
+        """
+        if document.portfolio.status == models.PortfolioStatus.PUBLISHED:
+            raise ValidationError("Cannot delete documents from a published portfolio")
+        
+        portfolio_service = PortfolioService()
+        document_id = document.id
         document.delete()
+        
+        if user:
+            portfolio_service._log_activity(
+                user=user,
+                action="DELETE",
+                entity_type="Document",
+                entity_id=document_id
+            )
 # endregion
 
 # region: Portfolio Service
@@ -262,6 +594,142 @@ class PortfolioService:
 
     def delete_portfolio(self, *, portfolio):
         portfolio.delete()
+
+    # === Portfolio Status Transitions & Publishing ===#
+    def _can_transition_status(self, current_status, new_status):
+        """
+        Enforce status transition rules: DRAFT → REVIEW → PUBLISHED → ARCHIVED only
+        """
+        valid_transitions = {
+            models.PortfolioStatus.DRAFT: [models.PortfolioStatus.REVIEW],
+            models.PortfolioStatus.REVIEW: [models.PortfolioStatus.PUBLISHED, models.PortfolioStatus.DRAFT],
+            models.PortfolioStatus.PUBLISHED: [models.PortfolioStatus.ARCHIVED],
+            models.PortfolioStatus.ARCHIVED: [],  # No transitions from ARCHIVED
+        }
+        return new_status in valid_transitions.get(current_status, [])
+
+    def _check_publish_requirements(self, portfolio):
+        """
+        Validate publishing requirements:
+        - At least one published project
+        - At least one published skill
+        """
+        published_projects = models.Project.objects.filter(
+            portfolio=portfolio,
+            status=models.ItemStatus.PUBLISHED
+        ).exists()
+        
+        published_skills = models.Skill.objects.filter(
+            portfolio=portfolio,
+            status=models.ItemStatus.PUBLISHED
+        ).exists()
+        
+        if not published_projects:
+            raise ValidationError("Portfolio must have at least one published project before publishing.")
+        if not published_skills:
+            raise ValidationError("Portfolio must have at least one published skill before publishing.")
+
+    def transition_portfolio_status(self, *, portfolio, new_status, user):
+        """
+        Transition portfolio status with validation.
+        Enforces business rules and creates activity logs.
+        """
+        if not self._can_transition_status(portfolio.status, new_status):
+            raise ValidationError(
+                f"Invalid status transition from {portfolio.status} to {new_status}. "
+                f"Allowed transitions: {models.PortfolioStatus.DRAFT} → {models.PortfolioStatus.REVIEW} → "
+                f"{models.PortfolioStatus.PUBLISHED} → {models.PortfolioStatus.ARCHIVED}"
+            )
+
+        # Check publishing requirements
+        if new_status == models.PortfolioStatus.PUBLISHED:
+            self._check_publish_requirements(portfolio)
+
+        old_status = portfolio.status
+        portfolio.status = new_status
+        portfolio.save()
+
+        # Log activity
+        self._log_activity(
+            user=user,
+            action="PUBLISH" if new_status == models.PortfolioStatus.PUBLISHED else "UPDATE",
+            entity_type="Portfolio",
+            entity_id=portfolio.id
+        )
+
+        # Create version snapshot on state change
+        if new_status == models.PortfolioStatus.PUBLISHED:
+            self.create_version_snapshot(
+                portfolio=portfolio,
+                user=user,
+                change_note=f"Auto-snapshot on publishing from {old_status}"
+            )
+
+        # Cascade archiving if moving to ARCHIVED
+        if new_status == models.PortfolioStatus.ARCHIVED:
+            self._archive_all_items(portfolio=portfolio, user=user)
+
+        return portfolio
+
+    def _archive_all_items(self, *, portfolio, user):
+        """
+        When portfolio is archived, force all items to ARCHIVED.
+        """
+        for model_class in [models.Project, models.Skill, models.Education, models.Document, models.SocialLink]:
+            model_class.objects.filter(portfolio=portfolio).update(status=models.ItemStatus.ARCHIVED)
+
+    def _log_activity(self, *, user, action, entity_type, entity_id):
+        """
+        Log significant actions. Append-only, never edited or deleted.
+        """
+        models.ActivityLog.objects.create(
+            user=user,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id
+        )
+
+    # === Item Publishing Validation ===#
+    def can_publish_item(self, *, item, portfolio):
+        """
+        Check if item can be published:
+        - Portfolio must be PUBLISHED
+        - Item status must be DRAFT
+        """
+        if portfolio.status != models.PortfolioStatus.PUBLISHED:
+            raise ValidationError(
+                f"Cannot publish item. Portfolio must be PUBLISHED (current: {portfolio.status})"
+            )
+        if item.status != models.ItemStatus.DRAFT:
+            raise ValidationError(
+                f"Cannot publish item. Item must be in DRAFT status (current: {item.status})"
+            )
+
+    def publish_item(self, *, item, portfolio, user, model_type):
+        """
+        Publish an item and log the activity.
+        """
+        self.can_publish_item(item=item, portfolio=portfolio)
+        item.status = models.ItemStatus.PUBLISHED
+        item.save()
+        
+        portfolio.updated_at = timezone.now()
+        portfolio.save()
+
+        self._log_activity(
+            user=user,
+            action="PUBLISH",
+            entity_type=model_type,
+            entity_id=item.id
+        )
+
+    def revert_item_to_draft(self, *, item, portfolio):
+        """
+        Auto-revert item to DRAFT if portfolio is not archived and item was modified.
+        """
+        if portfolio.status != models.PortfolioStatus.ARCHIVED:
+            item.status = models.ItemStatus.DRAFT
+            item.save()
 
     # === Portfolio Versioning ===#
     def create_version_snapshot(self, *, portfolio, user, change_note="", is_draft=False):

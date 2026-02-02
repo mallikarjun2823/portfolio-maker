@@ -4,7 +4,7 @@ djangorestframework==3.14.0
 
 # Authentication & permissions helpers
 django-cors-headers==4.3.1
-jwt==1.3.1
+PyJWT
 
 # File & image handling
 Pillow==10.2.0

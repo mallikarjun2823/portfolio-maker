@@ -132,6 +132,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'portfolio', 'status', 'created_at']
 
 class SkillSerializer(serializers.ModelSerializer):
+    portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate_years_of_experience(self, value):
         if value < 0:
@@ -151,16 +152,20 @@ class SkillSerializer(serializers.ModelSerializer):
         model = models.Skill
         fields = [
             'id',
+            'portfolio',
             'name',
             'proficiency_level',
             'years_of_experience',
-            'skill_certification'
+            'skill_certification',
+            'status',
+            'created_at'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
 # endregion
 
 # region: Education Serializer
 class EducationSerializer(serializers.ModelSerializer):
+    portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate_start_year(self, value):
         if value < 1900 or value > datetime.now().year + 10:
@@ -189,16 +194,20 @@ class EducationSerializer(serializers.ModelSerializer):
         model = models.Education
         fields = [
             'id',
+            'portfolio',
             'institution',
             'degree',
             'start_year',
-            'end_year'
+            'end_year',
+            'status',
+            'created_at'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
 # endregion
 
 # region: SocialLink Serializer
 class SocialLinkSerializer(serializers.ModelSerializer):
+    portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate_url(self, value):
         parsed = urlparse(value)
@@ -212,14 +221,18 @@ class SocialLinkSerializer(serializers.ModelSerializer):
         model = models.SocialLink
         fields = [
             'id',
+            'portfolio',
             'platform',
-            'url'
+            'url',
+            'status',
+            'created_at'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
 # endregion
 
 # region: Document Serializer
 class DocumentSerializer(serializers.ModelSerializer):
+    portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
 
     def validate_doc_type(self, value):
         if value not in dict(models.Document.DocumentType.choices):
@@ -241,12 +254,13 @@ class DocumentSerializer(serializers.ModelSerializer):
         model = models.Document
         fields = [
             'id',
+            'portfolio',
             'file',
             'doc_type',
             'status',
             'uploaded_at'
         ]
-        read_only_fields = ['id', 'uploaded_at', 'status']
+        read_only_fields = ['id', 'portfolio', 'uploaded_at', 'status']
 # endregion
 
 # region: Portfolio Versioning Serializers
