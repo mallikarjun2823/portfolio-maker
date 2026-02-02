@@ -14,6 +14,25 @@ const Projects = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortOrder, setSortOrder] = useState('newest');
+  
+  // Modal states
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showSkillModal, setShowSkillModal] = useState(false);
+  const [projectForm, setProjectForm] = useState({
+    title: '',
+    description: '',
+    tech_stack: '',
+    project_url: '',
+    status: 'completed'
+  });
+  const [skillForm, setSkillForm] = useState({
+    name: '',
+    proficiency_level: 'Beginner',
+    years_of_experience: 0,
+    certification: ''
+  });
+  const [editingProject, setEditingProject] = useState(null);
+  const [editingSkill, setEditingSkill] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -62,6 +81,110 @@ const Projects = () => {
     return project.tech_stack.split(',').map(s => s.trim()).filter(Boolean);
   };
 
+  const handleProjectSubmit = async (e) => {
+    e.preventDefault();
+    if (!portfolio) return;
+
+    try {
+      setSubmitting(true);
+      if (editingProject) {
+        await projectService.updateProject(portfolio.id, editingProject.id, projectForm);
+        setEditingProject(null);
+      } else {
+        await projectService.createProject(portfolio.id, projectForm);
+      }
+      setShowProjectModal(false);
+      setProjectForm({
+        title: '',
+        description: '',
+        tech_stack: '',
+        project_url: '',
+        status: 'completed'
+      });
+      await loadData(); // Reload data
+    } catch (err) {
+      console.error('Error saving project:', err);
+      setError('Failed to save project');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSkillSubmit = async (e) => {
+    e.preventDefault();
+    if (!portfolio) return;
+
+    try {
+      setSubmitting(true);
+      if (editingSkill) {
+        await skillService.updateSkill(portfolio.id, editingSkill.id, skillForm);
+        setEditingSkill(null);
+      } else {
+        await skillService.createSkill(portfolio.id, skillForm);
+      }
+      setShowSkillModal(false);
+      setSkillForm({
+        name: '',
+        proficiency_level: 'Beginner',
+        years_of_experience: 0,
+        certification: ''
+      });
+      await loadData(); // Reload data
+    } catch (err) {
+      console.error('Error saving skill:', err);
+      setError('Failed to save skill');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditProject = (project) => {
+    setEditingProject(project);
+    setProjectForm({
+      title: project.title,
+      description: project.description,
+      tech_stack: project.tech_stack || '',
+      project_url: project.project_url || '',
+      status: project.status
+    });
+    setShowProjectModal(true);
+  };
+
+  const handleEditSkill = (skill) => {
+    setEditingSkill(skill);
+    setSkillForm({
+      name: skill.name,
+      proficiency_level: skill.proficiency_level,
+      years_of_experience: skill.years_of_experience || 0,
+      certification: skill.skill_certification || ''
+    });
+    setShowSkillModal(true);
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
+
+    try {
+      await projectService.deleteProject(portfolio.id, projectId);
+      await loadData(); // Reload data
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      setError('Failed to delete project');
+    }
+  };
+
+  const handleDeleteSkill = async (skillId) => {
+    if (!window.confirm('Are you sure you want to delete this skill?')) return;
+
+    try {
+      await skillService.deleteSkill(portfolio.id, skillId);
+      await loadData(); // Reload data
+    } catch (err) {
+      console.error('Error deleting skill:', err);
+      setError('Failed to delete skill');
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-4 text-center">
@@ -86,8 +209,14 @@ const Projects = () => {
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h1 className="h4 mb-0">Projects & Skills</h1>
-        <div>
-          <select className="form-select" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+        <div className="d-flex gap-2">
+          <button className="btn btn-primary btn-sm" onClick={() => setShowProjectModal(true)}>
+            <i className="bi bi-plus-circle me-1"></i>Add Project
+          </button>
+          <button className="btn btn-outline-primary btn-sm" onClick={() => setShowSkillModal(true)}>
+            <i className="bi bi-plus-circle me-1"></i>Add Skill
+          </button>
+          <select className="form-select form-select-sm" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} style={{width: 'auto'}}>
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
           </select>
@@ -108,7 +237,23 @@ const Projects = () => {
                 <div>
                   <div className="d-flex justify-content-between align-items-start mb-2">
                     <h5 className="mb-0">{project.title}</h5>
-                    <Badge status={project.status} size="small" />
+                    <div className="d-flex gap-1">
+                      <button 
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => handleEditProject(project)}
+                        title="Edit project"
+                      >
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDeleteProject(project.id)}
+                        title="Delete project"
+                      >
+                        <i className="bi bi-trash"></i>
+                      </button>
+                      <Badge status={project.status} size="small" />
+                    </div>
                   </div>
                   <p className="text-muted">{project.description}</p>
 
@@ -145,13 +290,175 @@ const Projects = () => {
           <Card>
             <div className="d-flex flex-wrap gap-2">
               {skills.map((skill) => (
-                <div key={skill.id} className="p-2 border rounded bg-white">
-                  <div className="fw-semibold mb-1">{skill.name}</div>
+                <div key={skill.id} className="p-2 border rounded bg-white position-relative">
+                  <div className="d-flex justify-content-between align-items-start mb-1">
+                    <div className="fw-semibold mb-1">{skill.name}</div>
+                    <div className="d-flex gap-1">
+                      <button 
+                        className="btn btn-sm btn-outline-primary btn-sm"
+                        onClick={() => handleEditSkill(skill)}
+                        title="Edit skill"
+                      >
+                        <i className="bi bi-pencil"></i>
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-outline-danger btn-sm"
+                        onClick={() => handleDeleteSkill(skill.id)}
+                        title="Delete skill"
+                      >
+                        <i className="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
                   <div className="text-muted small">{skill.proficiency_level} · {skill.years_of_experience || 0} years</div>
                 </div>
               ))}
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Add Project Modal */}
+      {showProjectModal && (
+        <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add New Project</h5>
+                <button type="button" className="btn-close" onClick={() => setShowProjectModal(false)}></button>
+              </div>
+              <form onSubmit={handleProjectSubmit}>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label">Title *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={projectForm.title}
+                      onChange={(e) => setProjectForm({...projectForm, title: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Description *</label>
+                    <textarea
+                      className="form-control"
+                      rows={3}
+                      value={projectForm.description}
+                      onChange={(e) => setProjectForm({...projectForm, description: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Tech Stack</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g., React, Node.js, Python"
+                      value={projectForm.tech_stack}
+                      onChange={(e) => setProjectForm({...projectForm, tech_stack: e.target.value})}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Project URL</label>
+                    <input
+                      type="url"
+                      className="form-control"
+                      placeholder="https://..."
+                      value={projectForm.project_url}
+                      onChange={(e) => setProjectForm({...projectForm, project_url: e.target.value})}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Status</label>
+                    <select
+                      className="form-select"
+                      value={projectForm.status}
+                      onChange={(e) => setProjectForm({...projectForm, status: e.target.value})}
+                    >
+                      <option value="completed">Completed</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="planned">Planned</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowProjectModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={submitting}>
+                    {submitting ? 'Creating...' : 'Create Project'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Skill Modal */}
+      {showSkillModal && (
+        <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add New Skill</h5>
+                <button type="button" className="btn-close" onClick={() => setShowSkillModal(false)}></button>
+              </div>
+              <form onSubmit={handleSkillSubmit}>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label">Skill Name *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={skillForm.name}
+                      onChange={(e) => setSkillForm({...skillForm, name: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Proficiency Level</label>
+                    <select
+                      className="form-select"
+                      value={skillForm.proficiency_level}
+                      onChange={(e) => setSkillForm({...skillForm, proficiency_level: e.target.value})}
+                    >
+                      <option value="Beginner">Beginner</option>
+                      <option value="Intermediate">Intermediate</option>
+                      <option value="Advanced">Advanced</option>
+                      <option value="Expert">Expert</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Years of Experience</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      max="50"
+                      value={skillForm.years_of_experience}
+                      onChange={(e) => setSkillForm({...skillForm, years_of_experience: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Certification</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g., AWS Certified, Google Cloud Professional"
+                      value={skillForm.certification}
+                      onChange={(e) => setSkillForm({...skillForm, certification: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowSkillModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={submitting}>
+                    {submitting ? 'Creating...' : 'Create Skill'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </div>

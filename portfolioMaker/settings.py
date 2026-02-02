@@ -172,6 +172,10 @@ INTERNAL_IPS = ['127.0.0.1']
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://localhost:4173',
+    'http://127.0.0.1:4173',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -179,6 +183,17 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Set default auto field to BigAutoField to avoid warnings
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Django REST Framework configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'portfolioMaker.portfolio.serializers.JWTAuthentication',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+}
  
 # Note: install with `pip install django-debug-toolbar` and runserver to see the toolbar
 # For secure environments, enable the toolbar only on internal networks

@@ -176,3 +176,25 @@ export const documentService = {
     return response.data;
   },
 };
+
+export const socialLinkService = {
+  async getSocialLinks(portfolioId) {
+    const response = await apiClient.get(`/portfolios/${portfolioId}/social-links/`);
+    return response.data;
+  },
+
+  async createSocialLink(portfolioId, data) {
+    const response = await apiClient.post(`/portfolios/${portfolioId}/social-links/`, data);
+    return response.data;
+  },
+
+  async updateSocialLink(portfolioId, socialLinkId, data) {
+    const response = await apiClient.put(`/portfolios/${portfolioId}/social-links/${socialLinkId}/`, data);
+    return response.data;
+  },
+
+  async deleteSocialLink(portfolioId, socialLinkId) {
+    const response = await apiClient.delete(`/portfolios/${portfolioId}/social-links/${socialLinkId}/`);
+    return response.data;
+  },
+};
