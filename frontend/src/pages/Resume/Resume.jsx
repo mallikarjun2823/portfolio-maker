@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { portfolioService, projectService, skillService, educationService, socialLinkService } from '../../api/services';
+import { parseFieldErrors } from '../../utils/errorParser';
+import Card from '../../components/Card/Card';
+import Badge from '../../components/Badge/Badge';
 import Button from '../../components/Button/Button';
 import LoadingSkeleton from '../../components/LoadingSkeleton/LoadingSkeleton';
 import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
+import EmptyState from '../../components/EmptyState/EmptyState';
 
 const Resume = () => {
   const navigate = useNavigate();
@@ -14,25 +18,26 @@ const Resume = () => {
   const [socialLinks, setSocialLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [template, setTemplate] = useState('classic');
   
   // Modal states
   const [showEducationModal, setShowEducationModal] = useState(false);
   const [showSocialLinkModal, setShowSocialLinkModal] = useState(false);
   const [editingEducation, setEditingEducation] = useState(null);
   const [editingSocialLink, setEditingSocialLink] = useState(null);
+  const [educationFieldErrors, setEducationFieldErrors] = useState({});
+  const [educationNonFieldError, setEducationNonFieldError] = useState(null);
+  const [socialLinkFieldErrors, setSocialLinkFieldErrors] = useState({});
+  const [socialLinkNonFieldError, setSocialLinkNonFieldError] = useState(null);
   const [educationForm, setEducationForm] = useState({
     institution: '',
     degree: '',
-    field_of_study: '',
-    start_year: '',
+    start_year: new Date().getFullYear(),
     end_year: '',
-    status: 'completed'
+    status: 'PUBLISHED'
   });
   const [socialLinkForm, setSocialLinkForm] = useState({
     platform: '',
-    url: '',
-    username: ''
+    url: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -82,88 +87,97 @@ const Resume = () => {
 
     try {
       setSubmitting(true);
+      setEducationModalError(null);
       if (editingEducation) {
         await educationService.updateEducation(portfolio.id, editingEducation.id, educationForm);
-        setEditingEducation(null);
       } else {
         await educationService.createEducation(portfolio.id, educationForm);
       }
       setShowEducationModal(false);
+      setEditingEducation(null);
       setEducationForm({
         institution: '',
         degree: '',
-        field_of_study: '',
-        start_year: '',
+        start_year: new Date().getFullYear(),
         end_year: '',
-        status: 'completed'
+        status: 'PUBLISHED'
       });
-      await loadResumeData(); // Reload data
+      await loadResumeData();
     } catch (err) {
       console.error('Error saving education:', err);
-      setError('Failed to save education');
+      const errorMsg = err.response?.data?.detail || err.response?.data?.message || (err.response?.data && JSON.stringify(err.response.data)) || 'Failed to save education';
+      setEducationModalError(errorMsg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSocialLinkSubmit = async (e) => {
+    e.preventDefault();
+    if (!portfolio) return;
+
+    try {
+      setSubmitting(true);
+      setSocialLinkModalError(null);
+      if (editingSocialLink) {
+        await socialLinkService.updateSocialLink(portfolio.id, editingSocialLink.id, socialLinkForm);
+      } else {
+        await socialLinkService.createSocialLink(portfolio.id, socialLinkForm);
+      }
+      setShowSocialLinkModal(false);
+      setEditingSocialLink(null);
+      setSocialLinkForm({ platform: '', url: '' });
+      await loadResumeData();
+    } catch (err) {
+      console.error('Error saving social link:', err);
+      const errorMsg = err.response?.data?.detail || err.response?.data?.message || (err.response?.data && JSON.stringify(err.response.data)) || 'Failed to save social link';
+      setSocialLinkModalError(errorMsg);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteEducation = async (educationId) => {
-    if (!window.confirm('Are you sure you want to delete this education entry?')) return;
-
+    if (!window.confirm('Are you sure?')) return;
     try {
       await educationService.deleteEducation(portfolio.id, educationId);
-      await loadResumeData(); // Reload data
+      await loadResumeData();
     } catch (err) {
       console.error('Error deleting education:', err);
       setError('Failed to delete education');
     }
   };
 
-  const handleEditEducation = (education) => {
-    setEditingEducation(education);
-    setEducationForm({
-      institution: education.institution,
-      degree: education.degree,
-      field_of_study: education.field_of_study || '',
-      start_year: education.start_year,
-      end_year: education.end_year || '',
-      status: education.status || 'completed'
-    });
-    setShowEducationModal(true);
-  };
-
   const handleDeleteSocialLink = async (socialLinkId) => {
-    if (!window.confirm('Are you sure you want to delete this social link?')) return;
-
+    if (!window.confirm('Are you sure?')) return;
     try {
       await socialLinkService.deleteSocialLink(portfolio.id, socialLinkId);
-      await loadResumeData(); // Reload data
+      await loadResumeData();
     } catch (err) {
       console.error('Error deleting social link:', err);
       setError('Failed to delete social link');
     }
   };
 
-  const closeEducationModal = () => {
-    setShowEducationModal(false);
-    setEditingEducation(null);
+  const handleEditEducation = (edu) => {
+    setEditingEducation(edu);
     setEducationForm({
-      institution: '',
-      degree: '',
-      field_of_study: '',
-      start_year: '',
-      end_year: '',
-      status: 'completed'
+      institution: edu.institution,
+      degree: edu.degree,
+      start_year: edu.start_year,
+      end_year: edu.end_year || '',
+      status: edu.status
     });
+    setShowEducationModal(true);
   };
 
-  const closeSocialLinkModal = () => {
-    setShowSocialLinkModal(false);
-    setEditingSocialLink(null);
+  const handleEditSocialLink = (link) => {
+    setEditingSocialLink(link);
     setSocialLinkForm({
-      platform: '',
-      url: '',
-      username: ''
+      platform: link.platform,
+      url: link.url
     });
+    setShowSocialLinkModal(true);
   };
 
   if (loading) {
@@ -200,141 +214,179 @@ const Resume = () => {
 
   return (
     <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h1 className="h4 mb-0">Resume & Profile</h1>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 className="h4 mb-0">Resume & Profile</h1>
+          {portfolio && <p className="text-muted mb-0">{portfolio.title}</p>}
+        </div>
         <div className="d-flex gap-2">
           <button className="btn btn-outline-primary btn-sm" onClick={() => setShowEducationModal(true)}>
-            <i className="bi bi-plus-circle me-1"></i>Add Education
+            <i className="bi bi-plus-circle me-1"></i>Education
           </button>
           <button className="btn btn-outline-primary btn-sm" onClick={() => setShowSocialLinkModal(true)}>
-            <i className="bi bi-plus-circle me-1"></i>Add Social Link
+            <i className="bi bi-plus-circle me-1"></i>Social Link
           </button>
-          <select className="form-select form-select-sm" value={template} onChange={(e) => setTemplate(e.target.value)}>
-            <option value="classic">Classic Template</option>
-            <option value="modern">Modern Template</option>
-          </select>
-          <Button onClick={handleExport}>Export / Print</Button>
+          <button className="btn btn-primary btn-sm" onClick={handleExport}>
+            <i className="bi bi-printer me-1"></i>Export
+          </button>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-body">
-          <div className="mb-4">
-            <h2 className="h5 mb-1">{portfolio.title}</h2>
-            <p className="text-muted">{portfolio.summary}</p>
-          </div>
+      <Card>
+        <div>
+          {portfolio && (
+            <>
+              <h2 className="h5 mb-2">{portfolio.title}</h2>
+              <p className="text-muted mb-4">{portfolio.summary}</p>
+            </>
+          )}
 
+          {/* Education Section */}
           {education.length > 0 && (
-            <div className="mb-3">
-              <h3 className="h6">Education</h3>
-              {education.map((edu) => (
-                <div key={edu.id} className="mb-2 p-2 border rounded bg-white position-relative">
-                  <div className="d-flex justify-content-between align-items-start">
-                    <div className="flex-grow-1">
-                      <div className="d-flex justify-content-between">
-                        <div>
-                          <div className="fw-semibold">{edu.degree}</div>
-                          <div className="text-muted">{edu.institution}</div>
+            <div className="mb-4">
+              <h3 className="h6 mb-3">Education</h3>
+              <div className="row g-2">
+                {education.map((edu) => (
+                  <div key={edu.id} className="col-12">
+                    <div className="p-3 border rounded">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div className="flex-grow-1">
+                          <h5 className="mb-1">{edu.degree}</h5>
+                          <p className="text-muted mb-1">{edu.institution}</p>
+                          <small className="text-muted">{edu.start_year} - {edu.end_year || 'Present'}</small>
                         </div>
-                        <div className="text-muted">{edu.start_year} - {edu.end_year || 'Present'}</div>
+                        <div className="d-flex gap-1">
+                          <button 
+                            className="btn btn-sm btn-outline-secondary"
+                            onClick={() => handleEditEducation(edu)}
+                            title="Edit"
+                          >
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                          <button 
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleDeleteEducation(edu.id)}
+                            title="Delete"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        </div>
                       </div>
-                      {edu.field_of_study && <div className="mt-1">Field of Study: {edu.field_of_study}</div>}
-                    </div>
-                    <div className="d-flex gap-1 ms-2">
-                      <button 
-                        className="btn btn-sm btn-outline-primary btn-sm"
-                        onClick={() => handleEditEducation(edu)}
-                        title="Edit education"
-                      >
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                      <button 
-                        className="btn btn-sm btn-outline-danger btn-sm"
-                        onClick={() => handleDeleteEducation(edu.id)}
-                        title="Delete education"
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
+          {/* Projects Section */}
           {projects.length > 0 && (
-            <div className="mb-3">
-              <h3 className="h6">Projects</h3>
-              {projects.map((project) => (
-                <div key={project.id} className="mb-3">
-                  <div className="fw-semibold">{project.title}</div>
-                  <div className="text-muted">{project.description}</div>
-                  {project.tech_stack && <div className="mt-1"><strong>Technologies:</strong> {project.tech_stack}</div>}
-                  {project.project_url && <div className="mt-1"><strong>URL:</strong> {project.project_url}</div>}
-                </div>
-              ))}
+            <div className="mb-4">
+              <h3 className="h6 mb-3">Projects</h3>
+              <div className="row g-3">
+                {projects.map((project) => (
+                  <div key={project.id} className="col-md-6">
+                    <div className="p-3 border rounded h-100">
+                      <h5 className="mb-2">{project.title}</h5>
+                      <p className="text-muted small mb-2">{project.description}</p>
+                      {project.tech_stack && (
+                        <div className="mb-2">
+                          <small><strong>Tech:</strong> {project.tech_stack}</small>
+                        </div>
+                      )}
+                      {project.project_url && (
+                        <a href={project.project_url} target="_blank" rel="noopener noreferrer" className="small link-primary">
+                          View Project →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
+          {/* Skills Section */}
           {skills.length > 0 && (
-            <div>
-              <h3 className="h6">Skills</h3>
+            <div className="mb-4">
+              <h3 className="h6 mb-3">Skills</h3>
               <div className="d-flex flex-wrap gap-2">
                 {skills.map((skill) => (
-                  <div key={skill.id} className="p-2 border rounded bg-white">
-                    <strong>{skill.name}</strong> - {skill.proficiency_level}{skill.years_of_experience ? ` (${skill.years_of_experience} years)` : ''}
+                  <div key={skill.id} className="badge bg-light text-dark p-2">
+                    <div className="fw-semibold">{skill.name}</div>
+                    <small>{skill.proficiency_level}</small>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* Social Links Section */}
           {socialLinks.length > 0 && (
-            <div className="mt-3">
-              <h3 className="h6">Social Links</h3>
+            <div>
+              <h3 className="h6 mb-3">Connect</h3>
               <div className="d-flex flex-wrap gap-2">
                 {socialLinks.map((link) => (
-                  <div key={link.id} className="position-relative">
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm">
+                  <div key={link.id} className="d-flex gap-1 align-items-center">
+                    <a 
+                      href={link.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="btn btn-sm btn-outline-primary"
+                    >
                       <i className="bi bi-link-45deg me-1"></i>{link.platform}
                     </a>
-                    <div className="d-flex gap-1 position-absolute top-0 end-0">
-                      <button 
-                        className="btn btn-sm btn-outline-primary btn-sm"
-                        onClick={() => handleEditSocialLink(link)}
-                        title="Edit social link"
-                        style={{width: '24px', height: '24px', padding: '0'}}
-                      >
-                        <i className="bi bi-pencil" style={{fontSize: '10px'}}></i>
-                      </button>
-                      <button 
-                        className="btn btn-sm btn-outline-danger btn-sm"
-                        onClick={() => handleDeleteSocialLink(link.id)}
-                        title="Delete social link"
-                        style={{width: '24px', height: '24px', padding: '0'}}
-                      >
-                        <i className="bi bi-trash" style={{fontSize: '10px'}}></i>
-                      </button>
-                    </div>
+                    <button 
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() => handleEditSocialLink(link)}
+                      title="Edit"
+                      style={{width: '28px', height: '28px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}
+                    >
+                      <i className="bi bi-pencil"></i>
+                    </button>
+                    <button 
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDeleteSocialLink(link.id)}
+                      title="Delete"
+                      style={{width: '28px', height: '28px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}
+                    >
+                      <i className="bi bi-trash"></i>
+                    </button>
                   </div>
                 ))}
               </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Add Education Modal */}
+          {education.length === 0 && projects.length === 0 && skills.length === 0 && socialLinks.length === 0 && (
+            <EmptyState
+              icon={null}
+              title="Build Your Resume"
+              description="Add education, projects, and social links to build a complete resume"
+            />
+          )}
+        </div>
+      </Card>
+
+      {/* Education Modal */}
       {showEducationModal && (
         <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">{editingEducation ? 'Edit Education' : 'Add Education'}</h5>
-                <button type="button" className="btn-close" onClick={closeEducationModal}></button>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => {
+                    setShowEducationModal(false);
+                    setEditingEducation(null);
+                  }}
+                ></button>
               </div>
               <form onSubmit={handleEducationSubmit}>
                 <div className="modal-body">
+                  {educationModalError && <div className="mb-3"><ErrorMessage message={educationModalError} /></div>}
                   <div className="mb-3">
                     <label className="form-label">Institution *</label>
                     <input
@@ -350,20 +402,10 @@ const Resume = () => {
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="e.g., Bachelor of Science, Master of Arts"
+                      placeholder="e.g., Bachelor of Science"
                       value={educationForm.degree}
                       onChange={(e) => setEducationForm({...educationForm, degree: e.target.value})}
                       required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Field of Study</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="e.g., Computer Science, Business Administration"
-                      value={educationForm.field_of_study}
-                      onChange={(e) => setEducationForm({...educationForm, field_of_study: e.target.value})}
                     />
                   </div>
                   <div className="row">
@@ -375,7 +417,7 @@ const Resume = () => {
                         min="1950"
                         max="2030"
                         value={educationForm.start_year}
-                        onChange={(e) => setEducationForm({...educationForm, start_year: e.target.value})}
+                        onChange={(e) => setEducationForm({...educationForm, start_year: parseInt(e.target.value)})}
                         required
                       />
                     </div>
@@ -388,7 +430,7 @@ const Resume = () => {
                         max="2030"
                         placeholder="Leave empty if current"
                         value={educationForm.end_year}
-                        onChange={(e) => setEducationForm({...educationForm, end_year: e.target.value})}
+                        onChange={(e) => setEducationForm({...educationForm, end_year: e.target.value ? parseInt(e.target.value) : ''})}
                       />
                     </div>
                   </div>
@@ -399,16 +441,16 @@ const Resume = () => {
                       value={educationForm.status}
                       onChange={(e) => setEducationForm({...educationForm, status: e.target.value})}
                     >
-                      <option value="completed">Completed</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="planned">Planned</option>
+                      <option value="PUBLISHED">Published</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="ARCHIVED">Archived</option>
                     </select>
                   </div>
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowEducationModal(false)}>Cancel</button>
                   <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? 'Creating...' : 'Add Education'}
+                    {submitting ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </form>
@@ -417,17 +459,25 @@ const Resume = () => {
         </div>
       )}
 
-      {/* Add Social Link Modal */}
+      {/* Social Link Modal */}
       {showSocialLinkModal && (
         <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">{editingSocialLink ? 'Edit Social Link' : 'Add Social Link'}</h5>
-                <button type="button" className="btn-close" onClick={closeSocialLinkModal}></button>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => {
+                    setShowSocialLinkModal(false);
+                    setEditingSocialLink(null);
+                  }}
+                ></button>
               </div>
               <form onSubmit={handleSocialLinkSubmit}>
                 <div className="modal-body">
+                  {socialLinkModalError && <div className="mb-3"><ErrorMessage message={socialLinkModalError} /></div>}
                   <div className="mb-3">
                     <label className="form-label">Platform *</label>
                     <select
@@ -440,10 +490,8 @@ const Resume = () => {
                       <option value="LinkedIn">LinkedIn</option>
                       <option value="GitHub">GitHub</option>
                       <option value="Twitter">Twitter</option>
-                      <option value="Facebook">Facebook</option>
-                      <option value="Instagram">Instagram</option>
+                      <option value="Portfolio">Portfolio</option>
                       <option value="YouTube">YouTube</option>
-                      <option value="Website">Personal Website</option>
                       <option value="Other">Other</option>
                     </select>
                   </div>
@@ -458,21 +506,11 @@ const Resume = () => {
                       required
                     />
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label">Username</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Your username/handle on this platform"
-                      value={socialLinkForm.username}
-                      onChange={(e) => setSocialLinkForm({...socialLinkForm, username: e.target.value})}
-                    />
-                  </div>
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowSocialLinkModal(false)}>Cancel</button>
                   <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? 'Creating...' : 'Add Social Link'}
+                    {submitting ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </form>

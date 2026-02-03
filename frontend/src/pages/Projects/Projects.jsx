@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { portfolioService, projectService, skillService } from '../../api/services';
+import { parseFieldErrors } from '../../utils/errorParser';
 import Card from '../../components/Card/Card';
 import Badge from '../../components/Badge/Badge';
 import Button from '../../components/Button/Button';
@@ -36,6 +37,10 @@ const Projects = () => {
   const [submitting, setSubmitting] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [editingSkill, setEditingSkill] = useState(null);
+  const [projectFieldErrors, setProjectFieldErrors] = useState({});
+  const [projectNonFieldError, setProjectNonFieldError] = useState(null);
+  const [skillFieldErrors, setSkillFieldErrors] = useState({});
+  const [skillNonFieldError, setSkillNonFieldError] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -90,6 +95,8 @@ const Projects = () => {
 
     try {
       setSubmitting(true);
+      setProjectNonFieldError(null);
+      setProjectFieldErrors({});
       if (editingProject) {
         await projectService.updateProject(portfolio.id, editingProject.id, projectForm);
         setEditingProject(null);
@@ -107,7 +114,9 @@ const Projects = () => {
       await loadData(); // Reload data
     } catch (err) {
       console.error('Error saving project:', err);
-      setError('Failed to save project');
+      const parsed = parseFieldErrors(err);
+      setProjectFieldErrors(parsed.fieldErrors || {});
+      setProjectNonFieldError(parsed.nonField || 'Failed to save project');
     } finally {
       setSubmitting(false);
     }
@@ -118,6 +127,8 @@ const Projects = () => {
     if (!portfolio) return;
     try {
       setSubmitting(true);
+      setSkillNonFieldError(null);
+      setSkillFieldErrors({});
       // backend expects 'skill_certification' field name
       const payload = {
         name: skillForm.name,
@@ -143,7 +154,10 @@ const Projects = () => {
       await loadData(); // Reload data
     } catch (err) {
       console.error('Error saving skill:', err);
-      setError(err.response?.data || 'Failed to save skill');
+      const parsed = parseFieldErrors(err);
+      setSkillFieldErrors(parsed.fieldErrors || {});
+      setSkillNonFieldError(parsed.nonField || 'Failed to save skill');
+    
     } finally {
       setSubmitting(false);
     }
@@ -346,15 +360,17 @@ const Projects = () => {
               </div>
               <form onSubmit={handleProjectSubmit}>
                 <div className="modal-body">
+                  {projectNonFieldError && <div className="mb-3"><ErrorMessage message={projectNonFieldError} /></div>}
                   <div className="mb-3">
                     <label className="form-label">Title *</label>
                     <input
                       type="text"
                       className="form-control"
                       value={projectForm.title}
-                      onChange={(e) => setProjectForm({...projectForm, title: e.target.value})}
+                      onChange={(e) => { setProjectForm({...projectForm, title: e.target.value}); setProjectFieldErrors({...projectFieldErrors, title: null}); }}
                       required
                     />
+                    {projectFieldErrors.title && <div className="text-danger small mt-1">{projectFieldErrors.title}</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Description *</label>
@@ -362,9 +378,10 @@ const Projects = () => {
                       className="form-control"
                       rows={3}
                       value={projectForm.description}
-                      onChange={(e) => setProjectForm({...projectForm, description: e.target.value})}
+                      onChange={(e) => { setProjectForm({...projectForm, description: e.target.value}); setProjectFieldErrors({...projectFieldErrors, description: null}); }}
                       required
                     />
+                    {projectFieldErrors.description && <div className="text-danger small mt-1">{projectFieldErrors.description}</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Tech Stack</label>
@@ -373,8 +390,9 @@ const Projects = () => {
                       className="form-control"
                       placeholder="e.g., React, Node.js, Python"
                       value={projectForm.tech_stack}
-                      onChange={(e) => setProjectForm({...projectForm, tech_stack: e.target.value})}
+                      onChange={(e) => { setProjectForm({...projectForm, tech_stack: e.target.value}); setProjectFieldErrors({...projectFieldErrors, tech_stack: null}); }}
                     />
+                    {projectFieldErrors.tech_stack && <div className="text-danger small mt-1">{projectFieldErrors.tech_stack}</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Project URL</label>
@@ -383,20 +401,22 @@ const Projects = () => {
                       className="form-control"
                       placeholder="https://..."
                       value={projectForm.project_url}
-                      onChange={(e) => setProjectForm({...projectForm, project_url: e.target.value})}
+                      onChange={(e) => { setProjectForm({...projectForm, project_url: e.target.value}); setProjectFieldErrors({...projectFieldErrors, project_url: null}); }}
                     />
+                    {projectFieldErrors.project_url && <div className="text-danger small mt-1">{projectFieldErrors.project_url}</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Status</label>
                     <select
                       className="form-select"
                       value={projectForm.status}
-                      onChange={(e) => setProjectForm({...projectForm, status: e.target.value})}
+                      onChange={(e) => { setProjectForm({...projectForm, status: e.target.value}); setProjectFieldErrors({...projectFieldErrors, status: null}); }}
                     >
                       <option value="completed">Completed</option>
                       <option value="in_progress">In Progress</option>
                       <option value="planned">Planned</option>
                     </select>
+                    {projectFieldErrors.status && <div className="text-danger small mt-1">{projectFieldErrors.status}</div>}
                   </div>
                 </div>
                 <div className="modal-footer">
@@ -422,22 +442,24 @@ const Projects = () => {
               </div>
               <form onSubmit={handleSkillSubmit}>
                 <div className="modal-body">
+                  {skillNonFieldError && <div className="mb-3"><ErrorMessage message={skillNonFieldError} /></div>}
                   <div className="mb-3">
                     <label className="form-label">Skill Name *</label>
                     <input
                       type="text"
                       className="form-control"
                       value={skillForm.name}
-                      onChange={(e) => setSkillForm({...skillForm, name: e.target.value})}
+                      onChange={(e) => { setSkillForm({...skillForm, name: e.target.value}); setSkillFieldErrors({...skillFieldErrors, name: null}); }}
                       required
                     />
+                    {skillFieldErrors.name && <div className="text-danger small mt-1">{skillFieldErrors.name}</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Proficiency Level</label>
                     <select
                       className="form-select"
                       value={skillForm.proficiency_level}
-                      onChange={(e) => setSkillForm({...skillForm, proficiency_level: e.target.value})}
+                      onChange={(e) => { setSkillForm({...skillForm, proficiency_level: e.target.value}); setSkillFieldErrors({...skillFieldErrors, proficiency_level: null}); }}
                     >
                       <option value="BEGINNER">Beginner</option>
                       <option value="INTERMEDIATE">Intermediate</option>
@@ -453,8 +475,9 @@ const Projects = () => {
                       min="0"
                       max="50"
                       value={skillForm.years_of_experience}
-                      onChange={(e) => setSkillForm({...skillForm, years_of_experience: parseInt(e.target.value) || 0})}
+                      onChange={(e) => { setSkillForm({...skillForm, years_of_experience: parseInt(e.target.value) || 0}); setSkillFieldErrors({...skillFieldErrors, years_of_experience: null}); }}
                     />
+                    {skillFieldErrors.years_of_experience && <div className="text-danger small mt-1">{skillFieldErrors.years_of_experience}</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Certification</label>
@@ -463,8 +486,9 @@ const Projects = () => {
                       className="form-control"
                       placeholder="e.g., AWS Certified, Google Cloud Professional"
                       value={skillForm.certification}
-                      onChange={(e) => setSkillForm({...skillForm, certification: e.target.value})}
+                      onChange={(e) => { setSkillForm({...skillForm, certification: e.target.value}); setSkillFieldErrors({...skillFieldErrors, certification: null}); }}
                     />
+                    {skillFieldErrors.certification && <div className="text-danger small mt-1">{skillFieldErrors.certification}</div>}
                   </div>
                 </div>
                 <div className="modal-footer">

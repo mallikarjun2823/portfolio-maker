@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { portfolioService } from '../../api/services';
+import { parseFieldErrors } from '../../utils/errorParser';
 
 const Portfolios = () => {
   const navigate = useNavigate();
@@ -10,6 +11,8 @@ const Portfolios = () => {
 
   const [form, setForm] = useState({ title: '', summary: '', status: 'draft' });
   const [creating, setCreating] = useState(false);
+  const [portfolioFieldErrors, setPortfolioFieldErrors] = useState({});
+  const [portfolioNonFieldError, setPortfolioNonFieldError] = useState(null);
 
   useEffect(() => {
     load();
@@ -33,11 +36,15 @@ const Portfolios = () => {
     e.preventDefault();
     try {
       setCreating(true);
+      setPortfolioFieldErrors({});
+      setPortfolioNonFieldError(null);
       const created = await portfolioService.createPortfolio(form);
-      // navigate to dashboard (will pick up first portfolio)
       navigate('/');
     } catch (err) {
-      setError('Failed to create portfolio');
+      console.error('Create portfolio error:', err);
+      const parsed = parseFieldErrors(err);
+      setPortfolioFieldErrors(parsed.fieldErrors || {});
+      setPortfolioNonFieldError(parsed.nonField || 'Failed to create portfolio');
     } finally {
       setCreating(false);
     }
@@ -85,12 +92,17 @@ const Portfolios = () => {
           <div className="card-body">
             <h5>Create Portfolio</h5>
             {error && <div className="alert alert-danger">{error}</div>}
+            {portfolioNonFieldError && <div className="alert alert-danger">{portfolioNonFieldError}</div>}
             <form onSubmit={handleCreate} className="row g-3">
               <div className="col-12">
-                <input name="title" className="form-control" placeholder="Title" value={form.title} onChange={handleChange} required />
+                <label className="form-label">Title *</label>
+                <input name="title" className="form-control" placeholder="Title" value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setPortfolioFieldErrors(prev => ({ ...prev, title: null })); setPortfolioNonFieldError(null); }} required />
+                {portfolioFieldErrors.title && <div className="form-text text-danger">{portfolioFieldErrors.title}</div>}
               </div>
               <div className="col-12">
-                <textarea name="summary" className="form-control" placeholder="Short summary" value={form.summary} onChange={handleChange} rows={4} />
+                <label className="form-label">Short Summary *</label>
+                <textarea name="summary" className="form-control" placeholder="Short summary" value={form.summary} onChange={(e) => { setForm({ ...form, summary: e.target.value }); setPortfolioFieldErrors(prev => ({ ...prev, summary: null })); setPortfolioNonFieldError(null); }} rows={4} required />
+                {portfolioFieldErrors.summary && <div className="form-text text-danger">{portfolioFieldErrors.summary}</div>}
               </div>
               <div className="col-md-4">
                 <select name="status" className="form-select" value={form.status} onChange={handleChange}>

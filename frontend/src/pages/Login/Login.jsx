@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/services';
 import Button from '../../components/Button/Button';
 import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
+import { parseFieldErrors } from '../../utils/errorParser';
 
 const Login = () => {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [nonFieldError, setNonFieldError] = useState(null);
   
   const [formData, setFormData] = useState({
     username: '',
@@ -22,6 +25,8 @@ const Login = () => {
       [e.target.name]: e.target.value,
     });
     setError(null);
+    setFieldErrors(prev => ({ ...prev, [e.target.name]: null }));
+    setNonFieldError(null);
   };
 
   const handleSubmit = async (e) => {
@@ -50,11 +55,9 @@ const Login = () => {
       }
     } catch (err) {
       console.error('Auth error:', err);
-      const errorMsg = err.response?.data?.message || 
-                       err.response?.data?.detail ||
-                       Object.values(err.response?.data || {}).flat().join(', ') ||
-                       `${isLogin ? 'Login' : 'Registration'} failed. Please try again.`;
-      setError(errorMsg);
+      const parsed = parseFieldErrors(err);
+      setFieldErrors(parsed.fieldErrors || {});
+      setNonFieldError(parsed.nonField || (err.response?.data?.message || `${isLogin ? 'Login' : 'Registration'} failed. Please try again.`));
     } finally {
       setLoading(false);
     }
@@ -72,24 +75,27 @@ const Login = () => {
                   <p className="text-muted">{isLogin ? 'Sign in to your portfolio' : 'Start building your portfolio'}</p>
                 </div>
 
-                {error && <ErrorMessage message={error} />}
+                {(error || nonFieldError) && <ErrorMessage message={nonFieldError || error} />}
 
                 <form onSubmit={handleSubmit}>
                   <div className="mb-3">
-                    <label htmlFor="username" className="form-label">Username</label>
+                    <label htmlFor="username" className="form-label">Username *</label>
                     <input id="username" name="username" type="text" className="form-control" value={formData.username} onChange={handleChange} required autoComplete="username" />
+                    {fieldErrors.username && <div className="form-text text-danger">{fieldErrors.username}</div>}
                   </div>
 
                   {!isLogin && (
                     <div className="mb-3">
-                      <label htmlFor="email" className="form-label">Email</label>
+                      <label htmlFor="email" className="form-label">Email *</label>
                       <input id="email" name="email" type="email" className="form-control" value={formData.email} onChange={handleChange} required autoComplete="email" />
+                      {fieldErrors.email && <div className="form-text text-danger">{fieldErrors.email}</div>}
                     </div>
                   )}
 
                   <div className="mb-3">
-                    <label htmlFor="password" className="form-label">Password</label>
+                    <label htmlFor="password" className="form-label">Password *</label>
                     <input id="password" name="password" type="password" className="form-control" value={formData.password} onChange={handleChange} required autoComplete={isLogin ? 'current-password' : 'new-password'} />
+                    {fieldErrors.password && <div className="form-text text-danger">{fieldErrors.password}</div>}
                   </div>
 
                   <div className="d-grid mb-3">
