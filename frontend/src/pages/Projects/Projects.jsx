@@ -47,6 +47,7 @@ const Projects = () => {
   }, []);
 
   const loadData = async () => {
+    console.log('Loading portfolios and projects...');
     try {
       setLoading(true);
       setError(null);
@@ -241,12 +242,16 @@ const Projects = () => {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h1 className="h4 mb-0">Projects & Skills</h1>
         <div className="d-flex gap-2">
-          <button className="btn btn-primary btn-sm" onClick={() => setShowProjectModal(true)}>
-            <i className="bi bi-plus-circle me-1"></i>Add Project
-          </button>
-          <button className="btn btn-outline-primary btn-sm" onClick={() => setShowSkillModal(true)}>
-            <i className="bi bi-plus-circle me-1"></i>Add Skill
-          </button>
+          {portfolio?.is_owner && (
+            <>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowProjectModal(true)}>
+                <i className="bi bi-plus-circle me-1"></i>Add Project
+              </button>
+              <button className="btn btn-outline-primary btn-sm" onClick={() => setShowSkillModal(true)}>
+                <i className="bi bi-plus-circle me-1"></i>Add Skill
+              </button>
+            </>
+          )}
           <select className="form-select form-select-sm" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} style={{width: 'auto'}}>
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>

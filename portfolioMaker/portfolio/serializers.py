@@ -358,6 +358,13 @@ class PortfolioVersionSerializer(serializers.ModelSerializer):
 
 class PortfolioSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_owner = serializers.SerializerMethodField()
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.user == request.user
     
     def validate_title(self, value):
         if len(value) < 5:
@@ -382,9 +389,10 @@ class PortfolioSerializer(serializers.ModelSerializer):
             'summary',
             'status',
             'created_at',
-            'updated_at'
+            'updated_at',
+            'is_owner'
         ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'status']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'status', 'is_owner']
 
 
 # region: Analytics Request Serializer
