@@ -269,20 +269,24 @@ const Projects = () => {
                   <div className="d-flex justify-content-between align-items-start mb-2">
                     <h5 className="mb-0">{project.title}</h5>
                     <div className="d-flex gap-1">
-                      <button 
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => handleEditProject(project)}
-                        title="Edit project"
-                      >
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                      <button 
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => handleDeleteProject(project.id)}
-                        title="Delete project"
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      {project.is_owner && (
+                        <>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => handleEditProject(project)}
+                            title="Edit project"
+                          >
+                            <i className="bi bi-pencil me-1"></i>Edit
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleDeleteProject(project.id)}
+                            title="Delete project"
+                          >
+                            <i className="bi bi-trash me-1"></i>Delete
+                          </button>
+                        </>
+                      )}
                       <Badge status={project.status} size="small" />
                     </div>
                   </div>
@@ -325,20 +329,24 @@ const Projects = () => {
                   <div className="d-flex justify-content-between align-items-start mb-1">
                     <div className="fw-semibold mb-1">{skill.name}</div>
                     <div className="d-flex gap-1">
-                      <button 
-                        className="btn btn-sm btn-outline-primary btn-sm"
-                        onClick={() => handleEditSkill(skill)}
-                        title="Edit skill"
-                      >
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                      <button 
-                        className="btn btn-sm btn-outline-danger btn-sm"
-                        onClick={() => handleDeleteSkill(skill.id)}
-                        title="Delete skill"
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      {skill.is_owner && (
+                        <>
+                          <button
+                            className="btn btn-sm btn-outline-primary btn-sm"
+                            onClick={() => handleEditSkill(skill)}
+                            title="Edit skill"
+                          >
+                            <i className="bi bi-pencil me-1"></i>Edit
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger btn-sm"
+                            onClick={() => handleDeleteSkill(skill.id)}
+                            title="Delete skill"
+                          >
+                            <i className="bi bi-trash me-1"></i>Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="text-muted small">{skill.proficiency_level} · {skill.years_of_experience || 0} years</div>

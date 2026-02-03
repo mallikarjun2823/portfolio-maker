@@ -256,20 +256,24 @@ const Resume = () => {
                           <small className="text-muted">{edu.start_year} - {edu.end_year || 'Present'}</small>
                         </div>
                         <div className="d-flex gap-1">
-                          <button 
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => handleEditEducation(edu)}
-                            title="Edit"
-                          >
-                            <i className="bi bi-pencil"></i>
-                          </button>
-                          <button 
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => handleDeleteEducation(edu.id)}
-                            title="Delete"
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
+                          {edu.is_owner && (
+                            <>
+                              <button 
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => handleEditEducation(edu)}
+                                title="Edit"
+                              >
+                                <i className="bi bi-pencil me-1"></i>Edit
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => handleDeleteEducation(edu.id)}
+                                title="Delete"
+                              >
+                                <i className="bi bi-trash me-1"></i>Delete
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -336,22 +340,26 @@ const Resume = () => {
                     >
                       <i className="bi bi-link-45deg me-1"></i>{link.platform}
                     </a>
-                    <button 
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => handleEditSocialLink(link)}
-                      title="Edit"
-                      style={{width: '28px', height: '28px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}
-                    >
-                      <i className="bi bi-pencil"></i>
-                    </button>
-                    <button 
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => handleDeleteSocialLink(link.id)}
-                      title="Delete"
-                      style={{width: '28px', height: '28px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}
-                    >
-                      <i className="bi bi-trash"></i>
-                    </button>
+                    {link.is_owner && (
+                      <>
+                        <button 
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => handleEditSocialLink(link)}
+                          title="Edit"
+                          style={{width: '28px', height: '28px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}
+                        >
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                        <button 
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleDeleteSocialLink(link.id)}
+                          title="Delete"
+                          style={{width: '28px', height: '28px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

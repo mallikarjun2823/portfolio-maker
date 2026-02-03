@@ -98,6 +98,13 @@ class UserLoginSerializer(serializers.Serializer):
 # region: Project Serializers
 class ProjectSerializer(serializers.ModelSerializer):
     portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_owner = serializers.SerializerMethodField()
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.portfolio.user == request.user
 
     def validate_title(self, value):
         if len(value) < 5:
@@ -132,9 +139,10 @@ class ProjectSerializer(serializers.ModelSerializer):
             'tech_stack',
             'project_url',
             'status',
-            'created_at'
+            'created_at',
+            'is_owner'
         ]
-        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at', 'is_owner']
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
@@ -163,6 +171,13 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
 class SkillSerializer(serializers.ModelSerializer):
     portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_owner = serializers.SerializerMethodField()
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.portfolio.user == request.user
 
     def validate_years_of_experience(self, value):
         if value < 0:
@@ -188,14 +203,22 @@ class SkillSerializer(serializers.ModelSerializer):
             'years_of_experience',
             'skill_certification',
             'status',
-            'created_at'
+            'created_at',
+            'is_owner'
         ]
-        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at', 'is_owner']
 # endregion
 
 # region: Education Serializer
 class EducationSerializer(serializers.ModelSerializer):
     portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_owner = serializers.SerializerMethodField()
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.portfolio.user == request.user
 
     def validate_start_year(self, value):
         if value < 1900 or value > datetime.now().year + 10:
@@ -230,14 +253,22 @@ class EducationSerializer(serializers.ModelSerializer):
             'start_year',
             'end_year',
             'status',
-            'created_at'
+            'created_at',
+            'is_owner'
         ]
-        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at', 'is_owner']
 # endregion
 
 # region: SocialLink Serializer
 class SocialLinkSerializer(serializers.ModelSerializer):
     portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_owner = serializers.SerializerMethodField()
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.portfolio.user == request.user
 
     def validate_url(self, value):
         parsed = urlparse(value)
@@ -255,14 +286,22 @@ class SocialLinkSerializer(serializers.ModelSerializer):
             'platform',
             'url',
             'status',
-            'created_at'
+            'created_at',
+            'is_owner'
         ]
-        read_only_fields = ['id', 'portfolio', 'status', 'created_at']
+        read_only_fields = ['id', 'portfolio', 'status', 'created_at', 'is_owner']
 # endregion
 
 # region: Document Serializer
 class DocumentSerializer(serializers.ModelSerializer):
     portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
+    is_owner = serializers.SerializerMethodField()
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.portfolio.user == request.user
 
     def validate_doc_type(self, value):
         if value not in dict(models.Document.DocumentType.choices):
@@ -288,9 +327,10 @@ class DocumentSerializer(serializers.ModelSerializer):
             'file',
             'doc_type',
             'status',
-            'uploaded_at'
+            'uploaded_at',
+            'is_owner'
         ]
-        read_only_fields = ['id', 'portfolio', 'uploaded_at', 'status']
+        read_only_fields = ['id', 'portfolio', 'uploaded_at', 'status', 'is_owner']
 # endregion
 
 # region: Portfolio Versioning Serializers
