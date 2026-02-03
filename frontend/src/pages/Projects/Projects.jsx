@@ -26,13 +26,14 @@ const Projects = () => {
     description: '',
     tech_stack: '',
     project_url: '',
-    status: 'completed'
+    status: 'DRAFT'
   });
   const [skillForm, setSkillForm] = useState({
     name: '',
     proficiency_level: 'BEGINNER',
     years_of_experience: 0,
-    certification: ''
+    certification: '',
+    status: 'DRAFT'
   });
   const [submitting, setSubmitting] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -110,7 +111,7 @@ const Projects = () => {
         description: '',
         tech_stack: '',
         project_url: '',
-        status: 'completed'
+        status: 'DRAFT'
       });
       await loadData(); // Reload data
     } catch (err) {
@@ -136,6 +137,7 @@ const Projects = () => {
         proficiency_level: skillForm.proficiency_level,
         years_of_experience: skillForm.years_of_experience,
         skill_certification: skillForm.certification || null,
+        status: skillForm.status
       };
 
       if (editingSkill) {
@@ -182,7 +184,8 @@ const Projects = () => {
       name: skill.name,
       proficiency_level: skill.proficiency_level,
       years_of_experience: skill.years_of_experience || 0,
-      certification: skill.skill_certification || ''
+      certification: skill.skill_certification || '',
+      status: skill.status || 'DRAFT'
     });
     setShowSkillModal(true);
   };
@@ -210,6 +213,7 @@ const Projects = () => {
       setError('Failed to delete skill');
     }
   };
+
 
   if (loading) {
     return (
@@ -350,6 +354,7 @@ const Projects = () => {
                           >
                             <i className="bi bi-trash me-1"></i>Delete
                           </button>
+                          
                         </>
                       )}
                     </div>
@@ -425,9 +430,9 @@ const Projects = () => {
                       value={projectForm.status}
                       onChange={(e) => { setProjectForm({...projectForm, status: e.target.value}); setProjectFieldErrors({...projectFieldErrors, status: null}); }}
                     >
-                      <option value="completed">Completed</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="planned">Planned</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="PUBLISHED">Published</option>
+                      <option value="ARCHIVED">Archived</option>
                     </select>
                     {projectFieldErrors.status && <div className="text-danger small mt-1">{projectFieldErrors.status}</div>}
                   </div>
@@ -502,6 +507,19 @@ const Projects = () => {
                       onChange={(e) => { setSkillForm({...skillForm, certification: e.target.value}); setSkillFieldErrors({...skillFieldErrors, certification: null}); }}
                     />
                     {skillFieldErrors.certification && <div className="text-danger small mt-1">{skillFieldErrors.certification}</div>}
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Status</label>
+                    <select
+                      className="form-select"
+                      value={skillForm.status}
+                      onChange={(e) => { setSkillForm({...skillForm, status: e.target.value}); setSkillFieldErrors({...skillFieldErrors, status: null}); }}
+                    >
+                      <option value="DRAFT">Draft</option>
+                      <option value="PUBLISHED">Published</option>
+                      <option value="ARCHIVED">Archived</option>
+                    </select>
+                    {skillFieldErrors.status && <div className="text-danger small mt-1">{skillFieldErrors.status}</div>}
                   </div>
                 </div>
                 <div className="modal-footer">

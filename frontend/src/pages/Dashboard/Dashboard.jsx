@@ -124,7 +124,7 @@ const Dashboard = () => {
           <div className="card">
             <div className="card-body">
               <h6 className="card-subtitle mb-2 text-muted">Portfolio Status</h6>
-              <span className={`badge ${portfolio.status === 'published' ? 'bg-success' : 'bg-secondary'}`}>{portfolio.status}</span>
+              <span className={`badge ${portfolio.status === 'PUBLISHED' ? 'bg-success' : 'bg-secondary'}`}>{portfolio.status}</span>
               <div className="text-muted mt-2">Last updated: {formatDate(portfolio.updated_at)}</div>
             </div>
           </div>

@@ -37,7 +37,8 @@ const Resume = () => {
   });
   const [socialLinkForm, setSocialLinkForm] = useState({
     platform: '',
-    url: ''
+    url: '',
+    status: 'DRAFT'
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -159,6 +160,7 @@ const Resume = () => {
     }
   };
 
+
   const handleEditEducation = (edu) => {
     setEditingEducation(edu);
     setEducationForm({
@@ -175,7 +177,8 @@ const Resume = () => {
     setEditingSocialLink(link);
     setSocialLinkForm({
       platform: link.platform,
-      url: link.url
+      url: link.url,
+      status: link.status || 'DRAFT'
     });
     setShowSocialLinkModal(true);
   };
@@ -272,6 +275,7 @@ const Resume = () => {
                               >
                                 <i className="bi bi-trash me-1"></i>Delete
                               </button>
+                              
                             </>
                           )}
                         </div>
@@ -358,6 +362,7 @@ const Resume = () => {
                         >
                           <i className="bi bi-trash"></i>
                         </button>
+                        
                       </>
                     )}
                   </div>
@@ -513,6 +518,19 @@ const Resume = () => {
                       onChange={(e) => setSocialLinkForm({...socialLinkForm, url: e.target.value})}
                       required
                     />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Status</label>
+                    <select
+                      className="form-select"
+                      value={socialLinkForm.status}
+                      onChange={(e) => setSocialLinkForm({...socialLinkForm, status: e.target.value})}
+                    >
+                      <option value="DRAFT">Draft</option>
+                      <option value="PUBLISHED">Published</option>
+                      <option value="ARCHIVED">Archived</option>
+                    </select>
+                    {socialLinkFieldErrors.status && <div className="text-danger small mt-1">{socialLinkFieldErrors.status}</div>}
                   </div>
                 </div>
                 <div className="modal-footer">

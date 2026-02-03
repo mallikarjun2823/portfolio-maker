@@ -9,7 +9,7 @@ const Portfolios = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [form, setForm] = useState({ title: '', summary: '', status: 'draft' });
+  const [form, setForm] = useState({ title: '', summary: '', status: 'DRAFT' });
   const [creating, setCreating] = useState(false);
   const [portfolioFieldErrors, setPortfolioFieldErrors] = useState({});
   const [portfolioNonFieldError, setPortfolioNonFieldError] = useState(null);
@@ -50,6 +50,8 @@ const Portfolios = () => {
     }
   };
 
+  
+
   if (loading) return <div className="p-4 text-center"><div className="spinner-border" role="status"><span className="visually-hidden">Loading...</span></div></div>;
 
   return (
@@ -72,13 +74,18 @@ const Portfolios = () => {
           {portfolios.map(p => (
             <div className="col-md-6" key={p.id}>
               <div className="card">
-                <div className="card-body d-flex justify-content-between align-items-center">
-                  <div>
-                    <h5 className="mb-1">{p.title}</h5>
-                    <div className="text-muted">{p.summary}</div>
+                <div className="card-body">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <h5 className="mb-1">{p.title}</h5>
+                      <div className="text-muted">{p.summary}</div>
+                    </div>
                   </div>
-                  <div>
+                  <div className="d-flex gap-2">
                     <button className="btn btn-sm btn-outline-primary" onClick={() => navigate('/')}>Open</button>
+                    {p.is_owner && (
+                      null
+                    )}
                   </div>
                 </div>
               </div>
@@ -106,13 +113,13 @@ const Portfolios = () => {
               </div>
               <div className="col-md-4">
                 <select name="status" className="form-select" value={form.status} onChange={handleChange}>
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED">Published</option>
                 </select>
               </div>
               <div className="col-12 d-flex gap-2">
                 <button type="submit" className="btn btn-primary" disabled={creating}>{creating ? 'Creating…' : 'Create Portfolio'}</button>
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setForm({ title: '', summary: '', status: 'draft' })}>Reset</button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setForm({ title: '', summary: '', status: 'DRAFT' })}>Reset</button>
               </div>
             </form>
           </div>
