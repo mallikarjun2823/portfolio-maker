@@ -19,13 +19,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-6c2a&4%zxbupx=_#corp0+*k^%b9d!oqe&10dj7s9ik40d=2c8'
+# SECURITY: read sensitive settings from environment in production
+import os
+from django.core.exceptions import ImproperlyConfigured
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# SECRET_KEY should be supplied via environment in production. A default is
+# kept for local development but must be changed for deployment.
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-6c2a&4%zxbupx=_#corp0+*k^%b9d!oqe&10dj7s9ik40d=2c8')
 
-ALLOWED_HOSTS = []
+# DEBUG controlled by env var. Default to True for local development.
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
+
+# ALLOWED_HOSTS should be configured in production via env var as a
+# comma-separated list (e.g. "example.com,api.example.com"). Default to
+# localhost for development.
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# Production security-related settings (defaults are safe for development).
+SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() in ('1', 'true')
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'False').lower() in ('1', 'true')
+SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', 'False').lower() in ('1', 'true')
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() in ('1', 'true')
+CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'False').lower() in ('1', 'true')
+
+# If running in production (DEBUG=False) require a non-default SECRET_KEY
+if not DEBUG:
+    if (not SECRET_KEY) or SECRET_KEY.startswith('django-insecure') or len(set(SECRET_KEY)) < 5 or len(SECRET_KEY) < 50:
+        raise ImproperlyConfigured('The DJANGO_SECRET_KEY environment variable must be set to a long, random value for production.')
 
 
 # Application definition
@@ -121,6 +142,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+# Media files (user uploaded)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+if not os.path.exists(MEDIA_ROOT):
+    os.makedirs(MEDIA_ROOT)
 # Logging Configuration
 LOGGING = {
     'version': 1,

@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
+from django.conf.urls.static import static
 
 # Root URL configuration uses an API-first prefix and delegates app routes to the
 # `portfolio` app. This keeps URL surface predictable and consistent for clients.
@@ -32,3 +33,5 @@ if settings.DEBUG:
     # Keep debug toolbar under a clearly marked debug path and only enabled
     # in DEBUG mode so it cannot be triggered in production.
     urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
+    # Serve media files in development
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
