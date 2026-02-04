@@ -10,24 +10,31 @@ class Command(BaseCommand):
     help = 'Seed database with test users, portfolios, projects, skills, education, social links, documents and versions.'
 
     def handle(self, *args, **options):
-        """Create 5 users each with a portfolio and related objects.
+        """Create 10 users each with a portfolio and related objects.
         Idempotent: re-running won't create duplicates for same username/title types.
+        Each portfolio will include 5 projects, 5 skills and 3 education entries
+        with varied statuses and edge-cases for UI/testing.
         """
         created_count = 0
 
-        for idx in range(1, 6):
+        for idx in range(1, 11):
             username = f'seeduser{idx}'
             email = f'{username}@example.test'
-            password = 'SeedPass123!'
+            password = 'Password123!'
 
             user, user_created = User.objects.get_or_create(username=username, defaults={'email': email})
             if user_created:
-                user.set_password(password)
-                user.save()
-                self.stdout.write(self.style.SUCCESS(f'Created user: {username}'))
                 created_count += 1
+                self.stdout.write(self.style.SUCCESS(f'Created user: {username}'))
             else:
                 self.stdout.write(self.style.WARNING(f'User already exists: {username}'))
+
+            # For testing/seed idempotency: always set/reset the password to a known value
+            # so the frontend can log in with the seeded accounts.
+            user.set_password(password)
+            user.email = email
+            user.save()
+            self.stdout.write(self.style.SUCCESS(f'Set password for {username}'))
 
             # Ensure UserProfile exists
             profile, prof_created = models.UserProfile.objects.get_or_create(user=user)
@@ -49,56 +56,63 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.WARNING(f'Portfolio already exists for {username}'))
 
-            # Projects (3)
-            for i in range(1, 4):
+            # Projects (5) - include some missing URLs and mixed statuses
+            for i in range(1, 6):
                 proj_title = f'{username} Project {i}'
+                # Leave URL empty for every 3rd project to simulate missing data
+                project_url = '' if i % 3 == 0 else f'https://example.com/{username}/project{i}'
+                status = models.ItemStatus.PUBLISHED if i % 2 == 1 else models.ItemStatus.DRAFT
                 project, proj_created = models.Project.objects.get_or_create(
                     portfolio=portfolio,
                     title=proj_title,
                     defaults={
                         'description': f'Description for {proj_title}',
-                        'tech_stack': 'Django, DRF, PostgreSQL',
-                        'project_url': f'https://example.com/{username}/project{i}',
-                        'status': models.ItemStatus.PUBLISHED if i != 3 else models.ItemStatus.DRAFT
+                        'tech_stack': 'Django, DRF, PostgreSQL' if i % 2 == 1 else 'React, Vite, Tailwind',
+                        'project_url': project_url,
+                        'status': status
                     }
                 )
                 if proj_created:
                     self.stdout.write(self.style.SUCCESS(f'  Created project: {proj_title}'))
 
-            # Skills (3)
-            proficiency = [models.ProficiencyLevel.BEGINNER, models.ProficiencyLevel.INTERMEDIATE, models.ProficiencyLevel.ADVANCED]
-            for i in range(3):
+            # Skills (5) - varied proficiency levels, some with certifications
+            prof_choices = [models.ProficiencyLevel.BEGINNER, models.ProficiencyLevel.INTERMEDIATE, models.ProficiencyLevel.ADVANCED, models.ProficiencyLevel.EXPERT]
+            for i in range(5):
                 skill_name = f'{username} Skill {i+1}'
+                proficiency_choice = prof_choices[i % len(prof_choices)]
+                years = i + (0 if i < 2 else 2)
                 skill, skill_created = models.Skill.objects.get_or_create(
                     portfolio=portfolio,
                     name=skill_name,
                     defaults={
-                        'proficiency_level': proficiency[i % len(proficiency)],
-                        'years_of_experience': i + 1
+                        'proficiency_level': proficiency_choice,
+                        'years_of_experience': years,
+                        'status': models.ItemStatus.PUBLISHED if i % 2 == 0 else models.ItemStatus.DRAFT
                     }
                 )
                 if skill_created:
-                    # attach a small certification file for the first skill
-                    if i == 0:
+                    # Attach certification file for some skills to test file handling
+                    if (i == 0) or (idx % 2 == 0 and i == 2):
                         content = ContentFile(f'Certificate for {skill_name}'.encode('utf-8'))
                         content_name = f'certificate_{username}_{i+1}.txt'
                         skill.skill_certification.save(content_name, content, save=True)
                     self.stdout.write(self.style.SUCCESS(f'  Created skill: {skill_name}'))
 
-            # Education (2)
+            # Education (3) - include an ongoing program (no end_year)
             edu_data = [
-                ('Example University', 'BSc Computer Science', 2014, 2018),
-                ('Example Institute', 'MSc Computer Science', 2019, 2021)
+                ('Example University', 'BSc Computer Science', 2010, 2014),
+                ('Example Institute', 'MSc Computer Science', 2016, 2018),
+                ('Open Academy', 'Professional Certificate in AI', 2024, None)  # ongoing / recent
             ]
             for institution, degree, start_year, end_year in edu_data:
+                defaults = {'start_year': start_year}
+                if end_year is not None:
+                    defaults['end_year'] = end_year
                 edu, edu_created = models.Education.objects.get_or_create(
                     portfolio=portfolio,
                     institution=institution,
                     degree=degree,
-                    defaults={
-                        'start_year': start_year,
-                        'end_year': end_year
-                    }
+                    defaults=defaults
                 )
                 if edu_created:
                     self.stdout.write(self.style.SUCCESS(f'  Created education: {institution} - {degree}'))
@@ -117,21 +131,21 @@ class Command(BaseCommand):
                 if sl_created:
                     self.stdout.write(self.style.SUCCESS(f'  Created social link: {platform}'))
 
-            # Documents: resume + certificate
-            # Resume: only one per portfolio
-            if not models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
-                resume_content = ContentFile(f'Resume for {username}\nExperience: 3 years'.encode('utf-8'))
-                resume = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME, status=models.ItemStatus.DRAFT)
+            # Documents: create a resume for most users and a certificate for all
+            # Skip resume for every 4th user to test missing-doc cases
+            if idx % 4 != 0 and not models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
+                resume_content = ContentFile(f'Resume for {username}\nExperience: {2 + idx % 5} years'.encode('utf-8'))
+                resume = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME, status=models.ItemStatus.PUBLISHED if idx % 2 == 0 else models.ItemStatus.DRAFT)
                 resume.file.save(f'resume_{username}.txt', resume_content, save=True)
                 self.stdout.write(self.style.SUCCESS(f'  Created resume for {username}'))
 
-            # Certificate doc
+            # Certificate doc (always create)
             cert_content = ContentFile(f'Certificate for {username}'.encode('utf-8'))
             cert = models.Document(portfolio=portfolio, doc_type=models.Document.DocumentType.CERTIFICATE, status=models.ItemStatus.DRAFT)
             cert.file.save(f'certificate_{username}.txt', cert_content, save=True)
             self.stdout.write(self.style.SUCCESS(f'  Created certificate for {username}'))
 
-            # Create an initial version snapshot
+            # Create an initial version snapshot and an additional draft version for some
             if not models.PortfolioVersion.objects.filter(portfolio=portfolio, version_number=1).exists():
                 models.PortfolioVersion.objects.create(
                     portfolio=portfolio,
@@ -144,6 +158,19 @@ class Command(BaseCommand):
                     is_draft=False
                 )
                 self.stdout.write(self.style.SUCCESS(f'  Created initial version for {username}'))
+            # Add a draft second version occasionally
+            if idx % 3 == 0 and not models.PortfolioVersion.objects.filter(portfolio=portfolio, version_number=2).exists():
+                models.PortfolioVersion.objects.create(
+                    portfolio=portfolio,
+                    version_number=2,
+                    title=portfolio.title + ' (WIP)',
+                    summary=portfolio.summary,
+                    status=models.PortfolioStatus.REVIEW,
+                    created_by=user,
+                    change_note='Work-in-progress seed version',
+                    is_draft=True
+                )
+                self.stdout.write(self.style.SUCCESS(f'  Created draft version for {username}'))
 
             # Create profile views for analytics testing
             # Mix of authenticated viewers and anonymous IP-based views

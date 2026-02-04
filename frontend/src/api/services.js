@@ -29,6 +29,21 @@ export const authService = {
   },
 };
 
+export const profileService = {
+  async getProfile() {
+    const response = await apiClient.get('/me/profile/');
+    return response.data;
+  },
+
+  async updateProfile(formData) {
+    // formData is expected to be FormData for multipart (avatar)
+    const response = await apiClient.put('/me/profile/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  }
+};
+
 export const portfolioService = {
   async getPortfolios() {
     const response = await apiClient.get('/portfolios/');

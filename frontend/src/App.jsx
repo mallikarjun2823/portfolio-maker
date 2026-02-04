@@ -6,6 +6,7 @@ import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Projects from './pages/Projects/Projects';
 import Portfolios from './pages/Portfolios/Portfolios';
+import Profile from './pages/Profile/Profile';
 import Analytics from './pages/Analytics/Analytics';
 import Resume from './pages/Resume/Resume';
 import Activity from './pages/Activity/Activity';
@@ -69,6 +70,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Portfolios />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />

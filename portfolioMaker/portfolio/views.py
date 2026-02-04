@@ -15,6 +15,8 @@ from .services import PortfolioService, ProjectService, SkillService, EducationS
 from .permissions import IsPortfolioOwner
 from . import models
 from django.db import connection
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserProfileSerializer
 
 
 @api_view(['GET'])
@@ -162,6 +164,35 @@ class AnalyticsView(APIView):
             offset=params.get('offset')
         )
         return Response(result, status=status.HTTP_200_OK)
+# endregion
+
+
+# region: Profile Views
+class MyProfileView(GenericAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile, _ = models.UserProfile.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(profile, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        profile, _ = models.UserProfile.objects.get_or_create(user=request.user)
+        # handle avatar upload separately
+        data = request.data.copy()
+        serializer = self.get_serializer(profile, data=data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        # update bio
+        profile.bio = serializer.validated_data.get('bio', profile.bio)
+        # process avatar file
+        avatar_file = request.FILES.get('avatar')
+        if avatar_file is not None:
+            profile.avatar.save(avatar_file.name, avatar_file, save=False)
+        profile.save()
+        out = self.get_serializer(profile, context={'request': request})
+        return Response(out.data, status=status.HTTP_200_OK)
+# endregion
 # endregion
 
 # region: Social Link Views

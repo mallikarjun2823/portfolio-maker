@@ -395,6 +395,42 @@ class PortfolioSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'status', 'is_owner']
 
 
+# region: UserProfile Serializer
+class UserProfileSerializer(serializers.Serializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    bio = serializers.CharField(allow_blank=True, required=False)
+    avatar = serializers.ImageField(required=False, allow_null=True)
+
+    def to_representation(self, instance):
+        # instance is UserProfile
+        request = self.context.get('request')
+        avatar_url = None
+        if instance.avatar and hasattr(instance.avatar, 'url'):
+            try:
+                avatar_url = request.build_absolute_uri(instance.avatar.url) if request else instance.avatar.url
+            except Exception:
+                avatar_url = instance.avatar.url
+
+        return {
+            'username': instance.user.username,
+            'email': instance.user.email,
+            'bio': instance.bio or '',
+            'avatar': avatar_url
+        }
+
+    def update(self, instance, validated_data):
+        # validated_data may contain 'bio' and 'avatar' in root
+        bio = validated_data.get('bio')
+        if bio is not None:
+            instance.bio = bio
+        # avatar handling will be done in view where request.FILES is available
+        instance.save()
+        return instance
+
+# endregion
+
+
 # region: Analytics Request Serializer
 class AnalyticsRequestSerializer(serializers.Serializer):
     start_date = serializers.DateField(required=False)

@@ -19,6 +19,7 @@ const Layout = ({ children }) => {
     { path: '/', label: 'Dashboard' },
     { path: '/projects', label: 'Projects' },
     { path: '/portfolios', label: 'Portfolios' },
+    { path: '/profile', label: 'Profile' },
     { path: '/analytics', label: 'Analytics' },
     { path: '/resume', label: 'Resume' },
     { path: '/activity', label: 'Activity' },

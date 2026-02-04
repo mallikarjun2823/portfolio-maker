@@ -6,6 +6,7 @@ import { parseFieldErrors } from '../../utils/errorParser';
 const Portfolios = () => {
   const navigate = useNavigate();
   const [portfolios, setPortfolios] = useState([]);
+  const [hasPortfolio, setHasPortfolio] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -23,6 +24,9 @@ const Portfolios = () => {
       setLoading(true);
       const data = await portfolioService.getPortfolios();
       setPortfolios(data || []);
+      // determine if current user already has a portfolio (backend marks ownership)
+      const owns = (data || []).some(p => p.is_owner === true);
+      setHasPortfolio(owns);
     } catch (e) {
       setError('Failed to load portfolios');
     } finally {
@@ -58,7 +62,9 @@ const Portfolios = () => {
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h1 className="h4 mb-0">Portfolios</h1>
-        <button className="btn btn-outline-primary" onClick={() => window.scrollTo(0, document.body.scrollHeight)}>Create New</button>
+        {!hasPortfolio && (
+          <button className="btn btn-outline-primary" onClick={() => window.scrollTo(0, document.body.scrollHeight)}>Create New</button>
+        )}
       </div>
 
       {portfolios.length === 0 ? (
@@ -66,7 +72,9 @@ const Portfolios = () => {
           <div className="card-body">
             <h5 className="card-title">No portfolios yet</h5>
             <p className="card-text text-muted">Create your first portfolio to get started.</p>
-            <button className="btn btn-primary" onClick={() => window.scrollTo(0, document.body.scrollHeight)}>Create Portfolio</button>
+            {!hasPortfolio && (
+              <button className="btn btn-primary" onClick={() => window.scrollTo(0, document.body.scrollHeight)}>Create Portfolio</button>
+            )}
           </div>
         </div>
       ) : (
@@ -94,10 +102,12 @@ const Portfolios = () => {
         </div>
       )}
 
-      <div className="mt-4">
-        <div className="card">
-          <div className="card-body">
-            <h5>Create Portfolio</h5>
+      {/* Only show create form when the current user doesn't already have a portfolio */}
+      {!hasPortfolio && (
+        <div className="mt-4">
+          <div className="card">
+            <div className="card-body">
+              <h5>Create Portfolio</h5>
             {error && <div className="alert alert-danger">{error}</div>}
             {portfolioNonFieldError && <div className="alert alert-danger">{portfolioNonFieldError}</div>}
             <form onSubmit={handleCreate} className="row g-3">
@@ -125,6 +135,7 @@ const Portfolios = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

@@ -43,3 +43,8 @@ urlpatterns = [
     path('debug/queries/', views.debug_portfolio_sql_count, name='debug-queries'),
 ]
 # endregion
+
+# Profile endpoint
+urlpatterns += [
+    path('me/profile/', views.MyProfileView.as_view(), name='my-profile'),
+]
