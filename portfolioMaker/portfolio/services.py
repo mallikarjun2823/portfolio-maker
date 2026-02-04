@@ -362,6 +362,48 @@ class SocialLinkService:
         
         return social_link
 
+# region: Profile Service
+class ProfileService:
+    """Handles operations around the UserProfile and related User updates.
+
+    All DB access for profile CRUD should go through this service to respect
+    architectural boundaries.
+    """
+    def get_or_create_profile(self, user):
+        profile, created = models.UserProfile.objects.get_or_create(user=user)
+        return profile
+
+    def update_profile(self, user, data, avatar_file=None):
+        """Apply updates to the user's profile and user record.
+
+        `data` is expected to be the serializer.validated_data mapping which
+        may contain a nested `user` dict with `username` and `email`, plus
+        `bio` at top-level.
+        """
+        profile = self.get_or_create_profile(user)
+
+        # Update user fields if provided
+        user_data = data.get('user', {})
+        username = user_data.get('username')
+        email = user_data.get('email')
+        if username is not None and username != user.username:
+            user.username = username
+        if email is not None and email != user.email:
+            user.email = email
+        user.save()
+
+        # Update profile bio
+        if 'bio' in data:
+            profile.bio = data.get('bio') or ''
+
+        # Handle avatar file (if present) - caller should pass the uploaded file
+        if avatar_file is not None:
+            profile.avatar.save(avatar_file.name, avatar_file, save=False)
+
+        profile.save()
+        return profile
+# endregion
+
     def update_social_link(self, *, social_link, data, user=None):
         """Update social link with business rules"""
         portfolio_service = PortfolioService()

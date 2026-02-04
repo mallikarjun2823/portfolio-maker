@@ -397,8 +397,8 @@ class PortfolioSerializer(serializers.ModelSerializer):
 
 # region: UserProfile Serializer
 class UserProfileSerializer(serializers.Serializer):
-    username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.EmailField(source='user.email', read_only=True)
+    username = serializers.CharField(source='user.username')
+    email = serializers.EmailField(source='user.email')
     bio = serializers.CharField(allow_blank=True, required=False)
     avatar = serializers.ImageField(required=False, allow_null=True)
 
@@ -419,14 +419,29 @@ class UserProfileSerializer(serializers.Serializer):
             'avatar': avatar_url
         }
 
+    def validate_username(self, value):
+        # ensure username unique
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else None
+        from django.contrib.auth.models import User as DjangoUser
+        if DjangoUser.objects.exclude(pk=user.pk if user else None).filter(username=value).exists():
+            raise serializers.ValidationError('Username already in use')
+        return value
+
+    def validate_email(self, value):
+        # ensure email unique
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else None
+        from django.contrib.auth.models import User as DjangoUser
+        if DjangoUser.objects.exclude(pk=user.pk if user else None).filter(email=value).exists():
+            raise serializers.ValidationError('Email already in use')
+        return value
+
     def update(self, instance, validated_data):
-        # validated_data may contain 'bio' and 'avatar' in root
-        bio = validated_data.get('bio')
-        if bio is not None:
-            instance.bio = bio
-        # avatar handling will be done in view where request.FILES is available
-        instance.save()
-        return instance
+        # NOTE: Per architecture, serializers should validate and prepare data
+        # but not perform direct DB access for cross-entity updates. The
+        # ProfileService is responsible for applying changes to the DB.
+        return validated_data
 
 # endregion
 

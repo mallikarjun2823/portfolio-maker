@@ -58,6 +58,8 @@ const Profile = () => {
 
   if (loading) return <div className="p-4">Loading profile…</div>;
 
+  const handleInputChange = (e) => setProfile(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
   return (
     <div className="container py-4">
       <div className="card">
@@ -67,11 +69,11 @@ const Profile = () => {
           <form onSubmit={handleSubmit} className="row g-3">
             <div className="col-12 col-md-6">
               <label className="form-label">Username</label>
-              <input className="form-control" value={profile.username} readOnly />
+              <input name="username" className="form-control" value={profile.username} onChange={handleInputChange} required />
             </div>
             <div className="col-12 col-md-6">
               <label className="form-label">Email</label>
-              <input className="form-control" value={profile.email} readOnly />
+              <input name="email" type="email" className="form-control" value={profile.email} onChange={handleInputChange} required />
             </div>
 
             <div className="col-12">
