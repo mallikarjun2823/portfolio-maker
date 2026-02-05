@@ -1,29 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { authService } from '../../api/services';
+import { useAuth } from '../../auth';
+import { portfolioService } from '../../api/services';
 
 const Layout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const username = authService.getUsername();
+  const [myPortfolioId, setMyPortfolioId] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const portfolios = await portfolioService.getPortfolios();
+        const mine = portfolios.find(p => p.is_owner);
+        if (mounted && mine) setMyPortfolioId(mine.id);
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleLogout = () => {
-    authService.logout();
+    logout();
     navigate('/login');
   };
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
 
   const navItems = [
     { path: '/', label: 'Dashboard' },
     { path: '/projects', label: 'Projects' },
-    { path: '/portfolios', label: 'Portfolios' },
+    { path: '/portfolios', label: 'Explore' },
     { path: '/profile', label: 'Profile' },
     { path: '/analytics', label: 'Analytics' },
     { path: '/resume', label: 'Resume' },
     { path: '/activity', label: 'Activity' },
   ];
+
+  // Insert 'My Portfolio' in nav if user has one
+  if (myPortfolioId) {
+    // insert after Explore
+    navItems.splice(3, 0, { path: `/portfolios/${myPortfolioId}`, label: 'My Portfolio' });
+  }
 
   return (
     <div>
@@ -32,7 +57,7 @@ const Layout = ({ children }) => {
           <Link to="/" className="navbar-brand">Portfolio Maker</Link>
 
           <div className="d-flex align-items-center">
-            <div className="me-3 d-none d-lg-block">
+            <div className="me-3 d-none d-lg-block d-flex align-items-center">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
@@ -42,10 +67,15 @@ const Layout = ({ children }) => {
                   {item.label}
                 </Link>
               ))}
+
+              {/* CTA: Create Portfolio if user doesn't have one */}
+              {!myPortfolioId && (
+                <button className="btn btn-primary btn-sm ms-3" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
+              )}
             </div>
 
             <div className="d-flex align-items-center">
-              {username && <span className="me-2 text-muted">{username}</span>}
+              {user?.username && <span className="me-2 text-muted">{user.username}</span>}
               <button onClick={handleLogout} className="btn btn-outline-secondary btn-sm">Logout</button>
               <button
                 className="btn btn-link d-lg-none ms-2"

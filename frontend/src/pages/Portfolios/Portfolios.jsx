@@ -5,7 +5,8 @@ import { parseFieldErrors } from '../../utils/errorParser';
 
 const Portfolios = () => {
   const navigate = useNavigate();
-  const [portfolios, setPortfolios] = useState([]);
+  const [portfolios, setPortfolios] = useState([]); // other people's portfolios
+  const [myPortfolio, setMyPortfolio] = useState(null); // current user's portfolio
   const [hasPortfolio, setHasPortfolio] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,10 +24,12 @@ const Portfolios = () => {
     try {
       setLoading(true);
       const data = await portfolioService.getPortfolios();
-      setPortfolios(data || []);
-      // determine if current user already has a portfolio (backend marks ownership)
-      const owns = (data || []).some(p => p.is_owner === true);
-      setHasPortfolio(owns);
+      const my = (data || []).find(p => p.is_owner) || null;
+      const others = (data || []).filter(p => !p.is_owner);
+      setMyPortfolio(my);
+      setPortfolios(others);
+      // determine if current user already has a portfolio
+      setHasPortfolio(!!my);
     } catch (e) {
       setError('Failed to load portfolios');
     } finally {
@@ -67,11 +70,30 @@ const Portfolios = () => {
         )}
       </div>
 
+      {/* Show current user's portfolio separately */}
+      {myPortfolio && (
+        <div className="mb-3">
+          <div className="card">
+            <div className="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <h5 className="mb-0">My Portfolio: {myPortfolio.title}</h5>
+                <p className="mb-0 small text-muted">{myPortfolio.summary}</p>
+              </div>
+              <div className="d-flex gap-2">
+                <button className="btn btn-outline-primary btn-sm" onClick={() => navigate(`/portfolios/${myPortfolio.id}`)}>Open</button>
+                <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate('/profile')}>Edit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other portfolios list */}
       {portfolios.length === 0 ? (
         <div className="card">
           <div className="card-body">
             <h5 className="card-title">No portfolios yet</h5>
-            <p className="card-text text-muted">Create your first portfolio to get started.</p>
+            <p className="card-text text-muted">No public portfolios found.</p>
             {!hasPortfolio && (
               <button className="btn btn-primary" onClick={() => window.scrollTo(0, document.body.scrollHeight)}>Create Portfolio</button>
             )}
@@ -90,10 +112,7 @@ const Portfolios = () => {
                     </div>
                   </div>
                   <div className="d-flex gap-2">
-                    <button className="btn btn-sm btn-outline-primary" onClick={() => navigate('/')}>Open</button>
-                    {p.is_owner && (
-                      null
-                    )}
+                    <button className="btn btn-sm btn-outline-primary" onClick={() => navigate(`/portfolios/${p.id}`)}>Open</button>
                   </div>
                 </div>
               </div>

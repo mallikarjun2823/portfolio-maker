@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../../api/services';
+import { useAuth } from '../../auth';
 import Button from '../../components/Button/Button';
 import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
 import { parseFieldErrors } from '../../utils/errorParser';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -36,18 +37,18 @@ const Login = () => {
 
     try {
       if (isLogin) {
-        await authService.login({
+        await login({
           username: formData.username,
           password: formData.password,
         });
         navigate('/');
       } else {
-        await authService.register({
+        await register({
           username: formData.username,
           email: formData.email,
           password: formData.password,
         });
-        await authService.login({
+        await login({
           username: formData.username,
           password: formData.password,
         });
