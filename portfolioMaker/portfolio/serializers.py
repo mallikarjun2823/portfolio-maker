@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.conf import settings
-import jwt  # PyJWT library
+import jwt
 from datetime import datetime, timedelta
 from rest_framework import serializers
 from rest_framework.authentication import BaseAuthentication
@@ -143,7 +143,6 @@ class ProjectSerializer(serializers.ModelSerializer):
             'is_owner'
         ]
         read_only_fields = ['id', 'portfolio', 'status', 'created_at', 'is_owner']
-
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
     portfolio = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -310,15 +309,6 @@ class DocumentSerializer(serializers.ModelSerializer):
             )
         return value
 
-    def validate(self, data):
-        portfolio = self.context.get('portfolio')
-        if portfolio and data.get('doc_type') == models.Document.DocumentType.RESUME:
-            if models.Document.objects.filter(portfolio=portfolio, doc_type=models.Document.DocumentType.RESUME).exists():
-                raise serializers.ValidationError(
-                    "Only one resume allowed per portfolio."
-                )
-        return data
-
     class Meta:
         model = models.Document
         fields = [
@@ -353,8 +343,6 @@ class PortfolioVersionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'version_number', 'created_at', 'created_by', 'created_by_username']
 # endregion
-
-
 
 class PortfolioSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -394,7 +382,6 @@ class PortfolioSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'status', 'is_owner']
 
-
 # region: UserProfile Serializer
 class UserProfileSerializer(serializers.Serializer):
     username = serializers.CharField(source='user.username')
@@ -420,31 +407,20 @@ class UserProfileSerializer(serializers.Serializer):
         }
 
     def validate_username(self, value):
-        # ensure username unique
-        request = self.context.get('request')
-        user = request.user if request and request.user.is_authenticated else None
-        from django.contrib.auth.models import User as DjangoUser
-        if DjangoUser.objects.exclude(pk=user.pk if user else None).filter(username=value).exists():
-            raise serializers.ValidationError('Username already in use')
+        # Do not perform DB access here. Uniqueness checks are enforced
+        # by ProfileService.update_profile (per architectural rules).
+        if not value:
+            raise serializers.ValidationError('Username cannot be empty')
         return value
 
     def validate_email(self, value):
-        # ensure email unique
-        request = self.context.get('request')
-        user = request.user if request and request.user.is_authenticated else None
-        from django.contrib.auth.models import User as DjangoUser
-        if DjangoUser.objects.exclude(pk=user.pk if user else None).filter(email=value).exists():
-            raise serializers.ValidationError('Email already in use')
+        # Do not perform DB access here. Uniqueness checks are enforced
+        # by ProfileService.update_profile (per architectural rules).
+        if not value:
+            raise serializers.ValidationError('Email cannot be empty')
         return value
 
-    def update(self, instance, validated_data):
-        # NOTE: Per architecture, serializers should validate and prepare data
-        # but not perform direct DB access for cross-entity updates. The
-        # ProfileService is responsible for applying changes to the DB.
-        return validated_data
-
 # endregion
-
 
 # region: Analytics Request Serializer
 class AnalyticsRequestSerializer(serializers.Serializer):
