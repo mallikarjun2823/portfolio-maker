@@ -88,7 +88,7 @@ const Resume = () => {
 
     try {
       setSubmitting(true);
-      setEducationModalError(null);
+      setEducationNonFieldError(null);
       if (editingEducation) {
         await educationService.updateEducation(portfolio.id, editingEducation.id, educationForm);
       } else {
@@ -107,7 +107,7 @@ const Resume = () => {
     } catch (err) {
       console.error('Error saving education:', err);
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || (err.response?.data && JSON.stringify(err.response.data)) || 'Failed to save education';
-      setEducationModalError(errorMsg);
+      setEducationNonFieldError(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -119,7 +119,7 @@ const Resume = () => {
 
     try {
       setSubmitting(true);
-      setSocialLinkModalError(null);
+      setSocialLinkNonFieldError(null);
       if (editingSocialLink) {
         await socialLinkService.updateSocialLink(portfolio.id, editingSocialLink.id, socialLinkForm);
       } else {
@@ -132,7 +132,7 @@ const Resume = () => {
     } catch (err) {
       console.error('Error saving social link:', err);
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || (err.response?.data && JSON.stringify(err.response.data)) || 'Failed to save social link';
-      setSocialLinkModalError(errorMsg);
+      setSocialLinkNonFieldError(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -217,7 +217,7 @@ const Resume = () => {
 
   return (
     <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-4 no-print">
         <div>
           <h1 className="h4 mb-0">Resume & Profile</h1>
           {portfolio && <p className="text-muted mb-0">{portfolio.title}</p>}
@@ -235,151 +235,62 @@ const Resume = () => {
         </div>
       </div>
 
-      <Card>
-        <div>
-          {portfolio && (
-            <>
-              <h2 className="h5 mb-2">{portfolio.title}</h2>
-              <p className="text-muted mb-4">{portfolio.summary}</p>
-            </>
-          )}
+      {/* Printable resume layout */}
+      <div style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 28 }}>
+        <header style={{ textAlign: 'center', marginBottom: 18 }}>
+          <h1 style={{ margin: 0, fontSize: 22 }}>{portfolio.title}</h1>
+          <div style={{ color: '#333', marginTop: 6 }}>{portfolio.summary}</div>
+          <div style={{ marginTop: 8, color: '#066', fontSize: 12 }}>
+            {socialLinks.map((s, i) => (
+              <span key={s.id} style={{ marginRight: 10 }}>
+                <a href={s.url} target="_blank" rel="noreferrer" style={{ color: '#066', textDecoration: 'underline' }}>{s.platform}</a>
+              </span>
+            ))}
+          </div>
+        </header>
 
-          {/* Education Section */}
-          {education.length > 0 && (
-            <div className="mb-4">
-              <h3 className="h6 mb-3">Education</h3>
-              <div className="row g-2">
-                {education.map((edu) => (
-                  <div key={edu.id} className="col-12">
-                    <div className="p-3 border rounded">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div className="flex-grow-1">
-                          <h5 className="mb-1">{edu.degree}</h5>
-                          <p className="text-muted mb-1">{edu.institution}</p>
-                          <small className="text-muted">{edu.start_year} - {edu.end_year || 'Present'}</small>
-                        </div>
-                        <div className="d-flex gap-1">
-                          {edu.is_owner && (
-                            <>
-                              <button 
-                                className="btn btn-sm btn-outline-secondary"
-                                onClick={() => handleEditEducation(edu)}
-                                title="Edit"
-                              >
-                                <i className="bi bi-pencil me-1"></i>Edit
-                              </button>
-                              <button 
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() => handleDeleteEducation(edu.id)}
-                                title="Delete"
-                              >
-                                <i className="bi bi-trash me-1"></i>Delete
-                              </button>
-                              
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <section style={{ marginBottom: 12 }}>
+          <h2 style={{ fontSize: 14, margin: '8px 0' }}>Education</h2>
+          {education.map((edu) => (
+            <div key={edu.id} style={{ marginBottom: 8 }}>
+              <div style={{ fontWeight: 700 }}>{edu.institution} — {edu.degree}</div>
+              <div style={{ color: '#666', fontSize: 12 }}>{edu.start_year} — {edu.end_year || 'Present'}</div>
             </div>
-          )}
+          ))}
+        </section>
 
-          {/* Projects Section */}
-          {projects.length > 0 && (
-            <div className="mb-4">
-              <h3 className="h6 mb-3">Projects</h3>
-              <div className="row g-3">
-                {projects.map((project) => (
-                  <div key={project.id} className="col-md-6">
-                    <div className="p-3 border rounded h-100">
-                      <h5 className="mb-2">{project.title}</h5>
-                      <p className="text-muted small mb-2">{project.description}</p>
-                      {project.tech_stack && (
-                        <div className="mb-2">
-                          <small><strong>Tech:</strong> {project.tech_stack}</small>
-                        </div>
-                      )}
-                      {project.project_url && (
-                        <a href={project.project_url} target="_blank" rel="noopener noreferrer" className="small link-primary">
-                          View Project →
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <section style={{ marginBottom: 12 }}>
+          <h2 style={{ fontSize: 14, margin: '8px 0' }}>Projects</h2>
+          {projects.map((p) => (
+            <div key={p.id} style={{ marginBottom: 8 }}>
+              <div style={{ fontWeight: 700 }}>{p.title} <span style={{ fontSize: 12, color: '#666' }}>{p.status === 'PUBLISHED' ? '' : '(Draft)'}</span></div>
+              <div style={{ color: '#333', fontSize: 13 }}>{p.description}</div>
+              {p.tech_stack && <div style={{ color: '#666', fontSize: 12 }}>Tech: {p.tech_stack}</div>}
             </div>
-          )}
+          ))}
+        </section>
 
-          {/* Skills Section */}
-          {skills.length > 0 && (
-            <div className="mb-4">
-              <h3 className="h6 mb-3">Skills</h3>
-              <div className="d-flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <div key={skill.id} className="badge bg-light text-dark p-2">
-                    <div className="fw-semibold">{skill.name}</div>
-                    <small>{skill.proficiency_level}</small>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        <section style={{ marginBottom: 12 }}>
+          <h2 style={{ fontSize: 14, margin: '8px 0' }}>Technical Skills</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {skills.map(s => (
+              <div key={s.id} style={{ padding: '4px 8px', background: '#f3f4f6', borderRadius: 4, fontSize: 12 }}>{s.name}</div>
+            ))}
+          </div>
+        </section>
 
-          {/* Social Links Section */}
-          {socialLinks.length > 0 && (
-            <div>
-              <h3 className="h6 mb-3">Connect</h3>
-              <div className="d-flex flex-wrap gap-2">
-                {socialLinks.map((link) => (
-                  <div key={link.id} className="d-flex gap-1 align-items-center">
-                    <a 
-                      href={link.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="btn btn-sm btn-outline-primary"
-                    >
-                      <i className="bi bi-link-45deg me-1"></i>{link.platform}
-                    </a>
-                    {link.is_owner && (
-                      <>
-                        <button 
-                          className="btn btn-sm btn-outline-secondary"
-                          onClick={() => handleEditSocialLink(link)}
-                          title="Edit"
-                          style={{width: '28px', height: '28px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleDeleteSocialLink(link.id)}
-                          title="Delete"
-                          style={{width: '28px', height: '28px', padding: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'}}
-                        >
-                          <i className="bi bi-trash"></i>
-                        </button>
-                        
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        <section style={{ marginBottom: 12 }}>
+          <h2 style={{ fontSize: 14, margin: '8px 0' }}>Certifications</h2>
+          <div style={{ color: '#666', fontSize: 13 }}>
+            No certifications listed.
+          </div>
+        </section>
 
-          {education.length === 0 && projects.length === 0 && skills.length === 0 && socialLinks.length === 0 && (
-            <EmptyState
-              icon={null}
-              title="Build Your Resume"
-              description="Add education, projects, and social links to build a complete resume"
-            />
-          )}
-        </div>
-      </Card>
+        <footer style={{ marginTop: 16, borderTop: '1px solid #eee', paddingTop: 8, fontSize: 12, color: '#666' }}>
+          Generated by Portfolio Maker
+        </footer>
+
+      </div>
 
       {/* Education Modal */}
       {showEducationModal && (
@@ -399,7 +310,7 @@ const Resume = () => {
               </div>
               <form onSubmit={handleEducationSubmit}>
                 <div className="modal-body">
-                  {educationModalError && <div className="mb-3"><ErrorMessage message={educationModalError} /></div>}
+                  {educationNonFieldError && <div className="mb-3"><ErrorMessage message={educationNonFieldError} /></div>}
                   <div className="mb-3">
                     <label className="form-label">Institution *</label>
                     <input
@@ -490,7 +401,7 @@ const Resume = () => {
               </div>
               <form onSubmit={handleSocialLinkSubmit}>
                 <div className="modal-body">
-                  {socialLinkModalError && <div className="mb-3"><ErrorMessage message={socialLinkModalError} /></div>}
+                  {socialLinkNonFieldError && <div className="mb-3"><ErrorMessage message={socialLinkNonFieldError} /></div>}
                   <div className="mb-3">
                     <label className="form-label">Platform *</label>
                     <select
