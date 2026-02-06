@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
-import Layout from './components/Layout/Layout';
+import { Layout, ProtectedRoute } from './components';
 import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Projects from './pages/Projects/Projects';
@@ -18,37 +18,39 @@ import Profile from './pages/Profile/Profile';
 import Analytics from './pages/Analytics/Analytics';
 import Resume from './pages/Resume/Resume';
 import Activity from './pages/Activity/Activity';
+import { PERMISSIONS } from './rbac';
 import './styles/global.css';
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  
-  if (loading) {
-    return <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-      <div className="spinner-border" role="status">
-        <span className="visually-hidden">Loading...</span>
-      </div>
-    </div>;
-  }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <Layout>{children}</Layout>;
-};
+// Loading Component
+const LoadingScreen = () => (
+  <div style={{ 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    minHeight: '100vh',
+    background: 'var(--color-gray-50)'
+  }}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{
+        width: '48px',
+        height: '48px',
+        border: '4px solid var(--color-gray-200)',
+        borderTop: '4px solid var(--color-primary-600)',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+        margin: '0 auto 16px'
+      }}></div>
+      <p style={{ color: 'var(--color-gray-600)' }}>Loading...</p>
+    </div>
+  </div>
+);
 
 // Public Route Component (redirects to dashboard if already logged in)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
-    return <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-      <div className="spinner-border" role="status">
-        <span className="visually-hidden">Loading...</span>
-      </div>
-    </div>;
+    return <LoadingScreen />;
   }
   
   if (isAuthenticated) {
@@ -56,6 +58,15 @@ const PublicRoute = ({ children }) => {
   }
   
   return children;
+};
+
+// Protected Layout Wrapper
+const ProtectedLayout = ({ children }) => {
+  return (
+    <ProtectedRoute>
+      <Layout>{children}</Layout>
+    </ProtectedRoute>
+  );
 };
 
 function AppRoutes() {
@@ -71,37 +82,37 @@ function AppRoutes() {
         }
       />
 
-      {/* Protected Routes */}
+      {/* Protected Routes with Layout */}
       <Route
         path="/"
         element={
-          <ProtectedRoute>
+          <ProtectedLayout>
             <Dashboard />
-          </ProtectedRoute>
+          </ProtectedLayout>
         }
       />
       <Route
         path="/projects"
         element={
-          <ProtectedRoute>
+          <ProtectedLayout>
             <Projects />
-          </ProtectedRoute>
+          </ProtectedLayout>
         }
       />
       <Route
         path="/portfolios"
         element={
-          <ProtectedRoute>
+          <ProtectedLayout>
             <Portfolios />
-          </ProtectedRoute>
+          </ProtectedLayout>
         }
       />
       <Route
         path="/portfolios/:id"
         element={
-          <ProtectedRoute>
+          <ProtectedLayout>
             <PortfolioDetail />
-          </ProtectedRoute>
+          </ProtectedLayout>
         }
       >
         <Route index element={<Navigate to="overview" replace />} />
@@ -116,33 +127,33 @@ function AppRoutes() {
       <Route
         path="/profile"
         element={
-          <ProtectedRoute>
+          <ProtectedLayout>
             <Profile />
-          </ProtectedRoute>
+          </ProtectedLayout>
         }
       />
       <Route
         path="/analytics"
         element={
-          <ProtectedRoute>
+          <ProtectedLayout>
             <Analytics />
-          </ProtectedRoute>
+          </ProtectedLayout>
         }
       />
       <Route
         path="/resume"
         element={
-          <ProtectedRoute>
+          <ProtectedLayout>
             <Resume />
-          </ProtectedRoute>
+          </ProtectedLayout>
         }
       />
       <Route
         path="/activity"
         element={
-          <ProtectedRoute>
+          <ProtectedLayout>
             <Activity />
-          </ProtectedRoute>
+          </ProtectedLayout>
         }
       />
 
@@ -153,7 +164,6 @@ function AppRoutes() {
 }
 
 function App() {
-  console.log('App render');
   return (
     <AuthProvider>
       <BrowserRouter>

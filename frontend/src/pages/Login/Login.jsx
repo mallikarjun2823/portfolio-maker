@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth';
-import Button from '../../components/Button/Button';
+import { Button, Icon } from '../../components';
 import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
 import { parseFieldErrors } from '../../utils/errorParser';
+import './Login.css';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -65,59 +66,137 @@ const Login = () => {
   };
 
   return (
-      <div className="container py-5">
-        <div className="row justify-content-center">
-          <div className="col-md-6">
-            <div className="card">
-              <div className="card-body">
-                <div className="text-center mb-3">
-                  <div className="display-6 text-primary">Portfolio Maker</div>
-                  <h3 className="h5 mt-2">{isLogin ? 'Welcome Back' : 'Create Account'}</h3>
-                  <p className="text-muted">{isLogin ? 'Sign in to your portfolio' : 'Start building your portfolio'}</p>
-                </div>
-
-                {(error || nonFieldError) && <ErrorMessage message={nonFieldError || error} />}
-
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-3">
-                    <label htmlFor="username" className="form-label">Username *</label>
-                    <input id="username" name="username" type="text" className="form-control" value={formData.username} onChange={handleChange} required autoComplete="username" />
-                    {fieldErrors.username && <div className="form-text text-danger">{fieldErrors.username}</div>}
-                  </div>
-
-                  {!isLogin && (
-                    <div className="mb-3">
-                      <label htmlFor="email" className="form-label">Email *</label>
-                      <input id="email" name="email" type="email" className="form-control" value={formData.email} onChange={handleChange} required autoComplete="email" />
-                      {fieldErrors.email && <div className="form-text text-danger">{fieldErrors.email}</div>}
-                    </div>
-                  )}
-
-                  <div className="mb-3">
-                    <label htmlFor="password" className="form-label">Password *</label>
-                    <input id="password" name="password" type="password" className="form-control" value={formData.password} onChange={handleChange} required autoComplete={isLogin ? 'current-password' : 'new-password'} />
-                    {fieldErrors.password && <div className="form-text text-danger">{fieldErrors.password}</div>}
-                  </div>
-
-                  <div className="d-grid mb-3">
-                    <Button type="submit" fullWidth disabled={loading}>{loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}</Button>
-                  </div>
-                </form>
-
-                <div className="text-center my-2">OR</div>
-
-                <p className="text-center">
-                  {isLogin ? "Don't have an account? " : 'Already have an account? '}
-                  <button className="btn btn-link p-0" onClick={() => { setIsLogin(!isLogin); setError(null); setFormData({ username: '', email: '', password: '' }); }}>
-                    {isLogin ? 'Sign Up' : 'Sign In'}
-                  </button>
-                </p>
-              </div>
-            </div>
+    <div className="login-container">
+      <div className="login-card">
+        {/* Header */}
+        <div className="login-header">
+          <div className="login-logo">
+            <div className="logo-icon-large">P</div>
+            <h1 className="login-title">Portfolio Maker</h1>
+          </div>
+          <div className="login-subtitle">
+            <h2>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+            <p>{isLogin ? 'Sign in to manage your portfolio' : 'Start building your professional portfolio'}</p>
           </div>
         </div>
+
+        {/* Error Message */}
+        {(error || nonFieldError) && (
+          <div className="login-error">
+            <ErrorMessage message={nonFieldError || error} />
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label htmlFor="username" className="form-label">
+              <Icon name="portfolio" size={18} />
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              className={`form-input ${fieldErrors.username ? 'error' : ''}`}
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="Enter your username"
+              required
+              autoComplete="username"
+            />
+            {fieldErrors.username && (
+              <span className="form-error">{fieldErrors.username}</span>
+            )}
+          </div>
+
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="email" className="form-label">
+                <Icon name="info" size={18} />
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                className={`form-input ${fieldErrors.email ? 'error' : ''}`}
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                required
+                autoComplete="email"
+              />
+              {fieldErrors.email && (
+                <span className="form-error">{fieldErrors.email}</span>
+              )}
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="password" className="form-label">
+              <Icon name="lock" size={18} />
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className={`form-input ${fieldErrors.password ? 'error' : ''}`}
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+              required
+              autoComplete={isLogin ? 'current-password' : 'new-password'}
+            />
+            {fieldErrors.password && (
+              <span className="form-error">{fieldErrors.password}</span>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+            icon={isLogin ? null : 'sparkles'}
+          >
+            {isLogin ? 'Sign In' : 'Create Account'}
+          </Button>
+        </form>
+
+        {/* Toggle */}
+        <div className="login-toggle">
+          <div className="divider">
+            <span>OR</span>
+          </div>
+          <p className="toggle-text">
+            {isLogin ? "Don't have an account?" : 'Already have an account?'}
+            {' '}
+            <button
+              type="button"
+              className="toggle-button"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError(null);
+                setFieldErrors({});
+                setNonFieldError(null);
+                setFormData({ username: '', email: '', password: '' });
+              }}
+            >
+              {isLogin ? 'Sign Up' : 'Sign In'}
+            </button>
+          </p>
+        </div>
       </div>
-    );
+
+      {/* Footer */}
+      <div className="login-footer">
+        <p>&copy; 2026 Portfolio Maker. All rights reserved.</p>
+      </div>
+    </div>
+  );
 };
 
 export default Login;

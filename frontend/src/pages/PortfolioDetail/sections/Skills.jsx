@@ -4,9 +4,13 @@ import Card from '../../../components/Card/Card';
 import Badge from '../../../components/Badge/Badge';
 import Button from '../../../components/Button/Button';
 import EmptyState from '../../../components/EmptyState/EmptyState';
+import { useAuthorization } from '../../../rbac';
+import { PERMISSIONS } from '../../../rbac';
 
 export default function Skills() {
   const { skills, isOwner, openSkillModal, handleSkillDelete } = useOutletContext();
+
+  const { can } = useAuthorization();
 
   return (
     <div>
@@ -29,16 +33,16 @@ export default function Skills() {
                       <h6>{skill.name}</h6>
                       <Badge variant="info">{skill.proficiency_level}</Badge>
                     </div>
-                    {isOwner && (
-                      <div className="d-flex gap-1">
-                        <Button variant="outline-primary" size="sm" onClick={() => openSkillModal(skill)}>
-                          Edit
-                        </Button>
-                        <Button variant="outline-danger" size="sm" onClick={() => handleSkillDelete(skill.id)}>
-                          Delete
-                        </Button>
-                      </div>
-                    )}
+                                    {can(PERMISSIONS.SKILL_EDIT) && (
+                                      <div className="d-flex gap-1">
+                                        <Button variant="outline-primary" size="sm" onClick={() => openSkillModal(skill)}>
+                                          Edit
+                                        </Button>
+                                        <Button variant="outline-danger" size="sm" onClick={() => handleSkillDelete(skill.id)}>
+                                          Delete
+                                        </Button>
+                                      </div>
+                                    )}
                   </div>
                   <div className="small text-muted">
                     {skill.years_of_experience} years experience

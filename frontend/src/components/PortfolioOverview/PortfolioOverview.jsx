@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
+import { useAuthorization } from '../../rbac';
+import { PERMISSIONS } from '../../rbac';
 
 export default function PortfolioOverview({ portfolio, projects = [], skills = [], isOwner, onAddProject, onAddSkill, onAddEducation, onAddSocialLink, onUploadDocument, onCreateVersion }) {
   if (!portfolio) return null;
+  const { can } = useAuthorization(portfolio);
+  const [open, setOpen] = useState(false);
 
   return (
     <div>
@@ -12,7 +16,12 @@ export default function PortfolioOverview({ portfolio, projects = [], skills = [
         <div className="col-md-6">
           <Card>
             <Card.Body>
-              <h5>Recent Projects</h5>
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">Recent Projects</h5>
+                {can(PERMISSIONS.PROJECT_CREATE) && (
+                  <Button variant="primary" size="sm" onClick={onAddProject}>Add</Button>
+                )}
+              </div>
               {projects.slice(0, 3).map(p => (
                 <div key={p.id} className="mb-2">
                   <div className="d-flex justify-content-between">
@@ -32,7 +41,12 @@ export default function PortfolioOverview({ portfolio, projects = [], skills = [
         <div className="col-md-6">
           <Card>
             <Card.Body>
-              <h5>Skills Summary</h5>
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">Skills Summary</h5>
+                {can(PERMISSIONS.PROJECT_CREATE) && (
+                  <Button variant="primary" size="sm" onClick={onAddSkill}>Add</Button>
+                )}
+              </div>
               <div className="d-flex flex-wrap gap-2">
                 {skills.slice(0, 8).map(s => (
                   <span key={s.id} className="badge bg-info">{s.name}</span>
@@ -44,18 +58,7 @@ export default function PortfolioOverview({ portfolio, projects = [], skills = [
         </div>
       </div>
 
-      <div className="mt-3 d-flex gap-2 flex-wrap">
-        {isOwner && (
-          <>
-            <Button variant="primary" onClick={onAddProject}>Add Project</Button>
-            <Button variant="primary" onClick={onAddSkill}>Add Skill</Button>
-            <Button variant="primary" onClick={onAddEducation}>Add Education</Button>
-            <Button variant="primary" onClick={onAddSocialLink}>Add Social Link</Button>
-            <Button variant="primary" onClick={onUploadDocument}>Upload Document</Button>
-            <Button variant="secondary" onClick={onCreateVersion}>Create Snapshot</Button>
-          </>
-        )}
-      </div>
+      {/* Actions moved to inline header buttons for simplicity */}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
 } from '../../api/services';
 import { RequirePermission } from '../../auth';
 import { PERMISSIONS } from '../../rbac';
-import PortfolioOverview from '../../components/PortfolioOverview/PortfolioOverview';
+import Card from '../../components/Card/Card';
 import { parseFieldErrors } from '../../utils/errorParser';
 
 const Dashboard = () => {
@@ -485,8 +485,8 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="mb-4">
-          <div className="card">
-            <div className="card-body d-flex justify-content-between align-items-center">
+          <Card>
+            <Card.Body className="d-flex justify-content-between align-items-center">
               <div>
                 <h5 className="mb-0">You don't have a portfolio yet</h5>
                 <p className="mb-0 text-muted">Create a portfolio to manage your projects and resume.</p>
@@ -494,87 +494,51 @@ const Dashboard = () => {
               <div>
                 <button className="btn btn-primary" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
               </div>
-            </div>
-          </div>
+            </Card.Body>
+          </Card>
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats Cards - unified Card component styling */}
       <div className="row mb-4">
         <div className="col-md-3">
-          <div className="card">
-            <div className="card-body">
+          <Card className="h-100">
+            <Card.Body>
               <h6 className="card-subtitle mb-2 text-muted">Portfolio Status</h6>
-              <span className={`badge ${portfolio.status === 'PUBLISHED' ? 'bg-success' : 'bg-secondary'}`}>
-                {portfolio.status}
+              <span className={`badge ${portfolio?.status === 'PUBLISHED' ? 'bg-success' : 'bg-secondary'}`}>
+                {portfolio?.status || '—'}
               </span>
-              <div className="text-muted mt-2 small">Last updated: {formatDate(portfolio.updated_at)}</div>
-            </div>
-          </div>
+              <div className="text-muted mt-2 small">Last updated: {portfolio?.updated_at ? formatDate(portfolio.updated_at) : '—'}</div>
+            </Card.Body>
+          </Card>
         </div>
         <div className="col-md-3">
-          <div className="card text-center">
-            <div className="card-body">
-              <div className="h4 mb-0">{projects.length}</div>
+          <Card className="h-100 text-center">
+            <Card.Body>
+              <div className="h4 mb-0">{projects?.length ?? 0}</div>
               <small className="text-muted">Projects</small>
-            </div>
-          </div>
+            </Card.Body>
+          </Card>
         </div>
         <div className="col-md-3">
-          <div className="card text-center">
-            <div className="card-body">
-              <div className="h4 mb-0">{skills.length}</div>
+          <Card className="h-100 text-center">
+            <Card.Body>
+              <div className="h4 mb-0">{skills?.length ?? 0}</div>
               <small className="text-muted">Skills</small>
-            </div>
-          </div>
+            </Card.Body>
+          </Card>
         </div>
         <div className="col-md-3">
-          <div className="card text-center">
-            <div className="card-body">
-              <div className="h4 mb-0">{education.length}</div>
+          <Card className="h-100 text-center">
+            <Card.Body>
+              <div className="h4 mb-0">{education?.length ?? 0}</div>
               <small className="text-muted">Education</small>
-            </div>
-          </div>
+            </Card.Body>
+          </Card>
         </div>
       </div>
 
-      {/* Quick Actions - Only for Owners */}
-      {isOwner && (
-        <div className="row mb-4">
-          <div className="col-md-3">
-            <div className="card h-100" style={{ cursor: 'pointer' }} onClick={() => openProjectModal()}>
-              <div className="card-body">
-                <h5 className="card-title">Add Project</h5>
-                <p className="card-text text-muted small">Create a new project</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card h-100" style={{ cursor: 'pointer' }} onClick={() => openSkillModal()}>
-              <div className="card-body">
-                <h5 className="card-title">Add Skill</h5>
-                <p className="card-text text-muted small">Add a new skill</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card h-100" style={{ cursor: 'pointer' }} onClick={() => openEducationModal()}>
-              <div className="card-body">
-                <h5 className="card-title">Add Education</h5>
-                <p className="card-text text-muted small">Add education record</p>
-              </div>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card h-100" style={{ cursor: 'pointer' }} onClick={() => navigate('/analytics')}>
-              <div className="card-body">
-                <h5 className="card-title">View Analytics</h5>
-                <p className="card-text text-muted small">Insights and metrics</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Quick Actions removed to avoid redundancy; actions are available in section cards */}
 
       {/* Other Portfolios (public/others) */}
       <div className="mb-4">
@@ -582,42 +546,30 @@ const Dashboard = () => {
         {otherPortfolios.length === 0 ? (
           <p className="text-muted">No other portfolios found.</p>
         ) : (
-          <div className="row g-3 mt-2">
+          <div className="mt-2">
             {otherPortfolios.map(p => (
-              <div className="col-md-4" key={p.id}>
-                <div className="card h-100">
-                  <div className="card-body d-flex flex-column justify-content-between">
+              <div key={p.id} className="mb-3">
+                <Card>
+                  <Card.Body className="d-flex justify-content-between align-items-center">
                     <div>
                       <h5 className="mb-1">{p.title}</h5>
-                      <p className="text-muted small mb-2">{p.summary}</p>
-                      <div className="d-flex gap-2 flex-wrap">
+                      <p className="text-muted small mb-0">{p.summary}</p>
+                      <div className="mt-1">
                         <span className={`badge ${p.status === 'PUBLISHED' ? 'bg-success' : 'bg-secondary'}`}>{p.status}</span>
                       </div>
                     </div>
-                      <div className="d-flex justify-content-end mt-3">
-                      <button className="btn btn-outline-primary btn-sm" onClick={() => navigate(`/portfolios/${p.id}/overview`)}>Open</button>
+                    <div className="text-end">
+                      <button className="btn btn-link" onClick={() => navigate(`/portfolios/${p.id}/overview`)}>Open</button>
                     </div>
-                  </div>
-                </div>
+                  </Card.Body>
+                </Card>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Overview preview (uses shared component) */}
-      <PortfolioOverview
-        portfolio={portfolio}
-        projects={projects}
-        skills={skills}
-        isOwner={isOwner}
-        onAddProject={() => setShowProjectModal(true)}
-        onAddSkill={() => setShowSkillModal(true)}
-        onAddEducation={() => setShowEducationModal(true)}
-        onAddSocialLink={() => setShowSocialLinkModal(true)}
-        onUploadDocument={() => setShowDocumentModal(true)}
-        onCreateVersion={() => setShowVersionModal(true)}
-      />
+      {/* Portfolio overview removed from Dashboard — use sidebar 'My Portfolio' */}
 
       {/* MODALS - Only render if owner */}
       {isOwner && (

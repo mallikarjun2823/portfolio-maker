@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth';
 import { portfolioService } from '../../api/services';
+import Icon from '../Icon/Icon';
+import './Layout.css';
 
 const Layout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, profile, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [myPortfolioId, setMyPortfolioId] = useState(null);
 
   useEffect(() => {
@@ -21,6 +23,13 @@ const Layout = ({ children }) => {
         // ignore
       }
     })();
+    const onCreated = (e) => {
+      try {
+        const id = e?.detail?.id;
+        if (id) setMyPortfolioId(id);
+      } catch (err) {}
+    };
+    window.addEventListener('portfolio:created', onCreated);
     return () => { mounted = false; };
   }, []);
 
@@ -35,76 +44,111 @@ const Layout = ({ children }) => {
   };
 
   const navItems = [
-    { path: '/', label: 'Dashboard' },
-    { path: '/projects', label: 'Projects' },
-    { path: '/portfolios', label: 'Explore' },
-    { path: '/profile', label: 'Profile' },
-    { path: '/analytics', label: 'Analytics' },
-    { path: '/resume', label: 'Resume' },
-    { path: '/activity', label: 'Activity' },
-  ];
+    { path: '/', label: 'Dashboard', icon: 'dashboard' },
+    { path: '/projects', label: 'Projects', icon: 'projects' },
+    { path: '/portfolios', label: 'Explore', icon: 'explore' },
+    myPortfolioId ? { path: `/portfolios/${myPortfolioId}`, label: 'My Portfolio', icon: 'portfolio' } : null,
+    { path: '/profile', label: 'Profile', icon: 'settings' },
+    { path: '/analytics', label: 'Analytics', icon: 'analytics' },
+    { path: '/resume', label: 'Resume', icon: 'resume' },
+    { path: '/activity', label: 'Activity', icon: 'activity' },
+  ].filter(Boolean);
 
-  // Insert 'My Portfolio' in nav if user has one
-  if (myPortfolioId) {
-    // insert after Explore
-    navItems.splice(3, 0, { path: `/portfolios/${myPortfolioId}`, label: 'My Portfolio' });
-  }
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const toggleUserMenu = () => setUserMenuOpen(v => !v);
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-light bg-light">
-        <div className="container-fluid">
-          <Link to="/" className="navbar-brand">Portfolio Maker</Link>
-
-          <div className="d-flex align-items-center">
-            <div className="me-3 d-none d-lg-block d-flex align-items-center">
-              {navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`nav-link d-inline-block px-2 ${isActive(item.path) ? 'fw-bold' : ''}`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-
-              {/* CTA: Create Portfolio if user doesn't have one */}
-              {!myPortfolioId && (
-                <button className="btn btn-primary btn-sm ms-3" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
-              )}
-            </div>
-
-            <div className="d-flex align-items-center">
-              {user?.username && <span className="me-2 text-muted">{user.username}</span>}
-              <button onClick={handleLogout} className="btn btn-outline-secondary btn-sm">Logout</button>
-              <button
-                className="btn btn-link d-lg-none ms-2"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? 'Close' : 'Menu'}
-              </button>
-            </div>
-          </div>
+    <div className="layout-container">
+      {/* Sidebar Navigation */}
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+        <div className="sidebar-header">
+          <Link to="/" className="sidebar-logo">
+            <span className="logo-icon">P</span>
+            {sidebarOpen && <span className="logo-text">Portfolio Maker</span>}
+          </Link>
         </div>
 
-        {mobileMenuOpen && (
-          <div className="bg-light px-3 py-2 d-lg-none">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`d-block py-1 ${isActive(item.path) ? 'fw-bold' : ''}`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-            <button onClick={handleLogout} className="btn btn-outline-secondary btn-sm mt-2">Logout</button>
-          </div>
-        )}
-      </nav>
+        <nav className="sidebar-nav">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`sidebar-nav-item ${isActive(item.path) ? 'active' : ''}`}
+              title={item.label}
+            >
+              <span className="nav-icon">
+                <Icon name={item.icon} size={20} />
+              </span>
+              {sidebarOpen && <span className="nav-label">{item.label}</span>}
+            </Link>
+          ))}
+        </nav>
 
-      <main className="container py-4">{children}</main>
+        <div className="sidebar-footer">
+          <button 
+            className="sidebar-toggle-btn" 
+            onClick={toggleSidebar}
+            title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            <Icon name={sidebarOpen ? 'chevronLeft' : 'chevronRight'} size={20} />
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="main-container">
+        {/* Top Header */}
+        <header className="top-header">
+          <div className="header-left">
+            <button className="mobile-menu-btn" onClick={toggleSidebar}>
+              <Icon name="menu" size={24} />
+            </button>
+            <h2 className="page-title">{navItems.find(item => isActive(item.path))?.label || 'Dashboard'}</h2>
+          </div>
+
+          <div className="header-right">
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => navigate(myPortfolioId ? `/portfolios/${myPortfolioId}` : '/portfolios')}
+            >
+              <Icon name="sparkles" size={16} />
+              {myPortfolioId ? 'View Portfolio' : 'Create Portfolio'}
+            </button>
+            
+            <div className={`user-menu ${userMenuOpen ? 'open' : ''}`} onClick={toggleUserMenu} role="button" tabIndex={0}>
+              <div className="user-avatar">
+                {profile?.avatar ? (
+                  <img src={profile.avatar} alt={user?.username} />
+                ) : (
+                  <div className="avatar-placeholder">
+                    {user?.username?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                )}
+              </div>
+              <div className="user-info hide-mobile">
+                <span className="user-name">{user?.username || 'User'}</span>
+              </div>
+
+              <div className={`user-dropdown ${userMenuOpen ? 'show' : ''}`} onClick={(e) => e.stopPropagation()}>
+                <Link to="/profile" className="user-dropdown-item">Profile</Link>
+                <Link to="/settings" className="user-dropdown-item">Settings</Link>
+                <Link to="/analytics" className="user-dropdown-item">Analytics</Link>
+                <div className="user-dropdown-divider" />
+                <button onClick={handleLogout} className="user-dropdown-item logout">Logout</button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="main-content fade-in">
+          {children}
+        </main>
+      </div>
     </div>
   );
 };
