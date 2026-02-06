@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { portfolioService, projectService, skillService, educationService, socialLinkService } from '../../api/services';
+import { useAuth } from '../../auth';
 import { parseFieldErrors } from '../../utils/errorParser';
 import Card from '../../components/Card/Card';
 import Badge from '../../components/Badge/Badge';
@@ -11,6 +12,7 @@ import EmptyState from '../../components/EmptyState/EmptyState';
 
 const Resume = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [portfolio, setPortfolio] = useState(null);
   const [projects, setProjects] = useState([]);
   const [skills, setSkills] = useState([]);
@@ -235,14 +237,19 @@ const Resume = () => {
         </div>
       </div>
 
+      {/* Print styles: show only `.resume-print-area` when printing */}
+      <style>{`@media print{ body *{visibility:hidden} .resume-print-area, .resume-print-area *{visibility:visible} .resume-print-area{position:fixed;left:0;top:0;width:100%} .no-print{display:none !important} }`}</style>
+
       {/* Printable resume layout */}
-      <div style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 28 }}>
+      <div className="resume-print-area" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 28 }}>
         <header style={{ textAlign: 'center', marginBottom: 18 }}>
-          <h1 style={{ margin: 0, fontSize: 22 }}>{portfolio.title}</h1>
-          <div style={{ color: '#333', marginTop: 6 }}>{portfolio.summary}</div>
-          <div style={{ marginTop: 8, color: '#066', fontSize: 12 }}>
-            {socialLinks.map((s, i) => (
-              <span key={s.id} style={{ marginRight: 10 }}>
+          <h1 style={{ margin: 0, fontSize: 22 }}>{profile?.full_name || portfolio.title}</h1>
+          <div style={{ color: '#333', marginTop: 6 }}>{profile?.headline || portfolio.summary}</div>
+          <div style={{ marginTop: 8, color: '#333', fontSize: 12 }}>
+            {profile?.email && <span style={{ marginRight: 12 }}>{profile.email}</span>}
+            {profile?.phone && <span style={{ marginRight: 12 }}>{profile.phone}</span>}
+            {socialLinks.map((s) => (
+              <span key={s.id} style={{ marginLeft: 8 }}>
                 <a href={s.url} target="_blank" rel="noreferrer" style={{ color: '#066', textDecoration: 'underline' }}>{s.platform}</a>
               </span>
             ))}
