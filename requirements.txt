@@ -22,3 +22,5 @@ pytest-django==4.8.0
 # Utilities
 python-dateutil==2.8.2
 django-debug-toolbar==3.7.0
+supabase==0.3.3
+requests==2.31.0
