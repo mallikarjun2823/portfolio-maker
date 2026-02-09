@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+ 
 import { useAuth } from '../../auth';
 import { Button, Icon } from '../../components';
 import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
@@ -7,7 +7,7 @@ import { parseFieldErrors } from '../../utils/errorParser';
 import './Login.css';
 
 const Login = () => {
-  const navigate = useNavigate();
+  
   const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,7 @@ const Login = () => {
           username: formData.username,
           password: formData.password,
         });
-        navigate('/');
+        window.location.href = '/';
       } else {
         await register({
           username: formData.username,
@@ -53,7 +53,7 @@ const Login = () => {
           username: formData.username,
           password: formData.password,
         });
-        navigate('/');
+        window.location.href = '/';
       }
     } catch (err) {
       console.error('Auth error:', err);

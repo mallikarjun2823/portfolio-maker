@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { portfolioService } from '../../api/services';
 import { parseFieldErrors } from '../../utils/errorParser';
 
 const Portfolios = () => {
-  const navigate = useNavigate();
+  
   const [hasPortfolio, setHasPortfolio] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,7 +40,7 @@ const Portfolios = () => {
       const created = await portfolioService.createPortfolio(form);
       // notify top-level layout so header button updates to 'View Portfolio'
       try { window.dispatchEvent(new CustomEvent('portfolio:created', { detail: created })); } catch (e) {}
-      navigate(`/portfolios/${created.id}`);
+      window.location.href = `/portfolios/${created.id}`;
     } catch (err) {
       const parsed = parseFieldErrors(err);
       setPortfolioFieldErrors(parsed.fieldErrors || {});

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+ 
 import {
   portfolioService,
   projectService,
@@ -15,7 +15,7 @@ import Card from '../../components/Card/Card';
 import { parseFieldErrors } from '../../utils/errorParser';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
+  
   
   // Data states
   const [portfolio, setPortfolio] = useState(null);
@@ -472,7 +472,7 @@ const Dashboard = () => {
               <p className="text-muted">{portfolio.summary}</p>
             </div>
               <div className="d-flex gap-2">
-              <button className="btn btn-outline-primary btn-sm" onClick={() => navigate(`/portfolios/${portfolio.id}/overview`)}>
+              <button className="btn btn-outline-primary btn-sm" onClick={() => { window.location.href = `/portfolios/${portfolio.id}/overview`; }}>
                 Open My Portfolio
               </button>
               {isOwner && (
@@ -492,7 +492,7 @@ const Dashboard = () => {
                 <p className="mb-0 text-muted">Create a portfolio to manage your projects and resume.</p>
               </div>
               <div>
-                <button className="btn btn-primary" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
+                <button className="btn btn-primary" onClick={() => { window.location.href = '/portfolios'; }}>Create Portfolio</button>
               </div>
             </Card.Body>
           </Card>

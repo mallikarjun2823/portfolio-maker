@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth';
 import { portfolioService } from '../../api/services';
 import Icon from '../Icon/Icon';
 import './Layout.css';
 
 const Layout = ({ children }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  
   const { user, profile, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [myPortfolioId, setMyPortfolioId] = useState(null);
@@ -30,17 +29,18 @@ const Layout = ({ children }) => {
       } catch (err) {}
     };
     window.addEventListener('portfolio:created', onCreated);
-    return () => { mounted = false; };
+    return () => { mounted = false; window.removeEventListener('portfolio:created', onCreated); };
   }, []);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    window.location.href = '/login';
   };
 
   const isActive = (path) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
+    const pathname = window.location.pathname || '/';
+    if (path === '/') return pathname === '/';
+    return pathname.startsWith(path);
   };
 
   const navItems = [
@@ -113,7 +113,7 @@ const Layout = ({ children }) => {
           <div className="header-right">
             <button
               className="btn btn-primary btn-sm"
-              onClick={() => navigate(myPortfolioId ? `/portfolios/${myPortfolioId}` : '/portfolios')}
+              onClick={() => { window.location.href = myPortfolioId ? `/portfolios/${myPortfolioId}` : '/portfolios'; }}
             >
               <Icon name="sparkles" size={16} />
               {myPortfolioId ? 'View Portfolio' : 'Create Portfolio'}

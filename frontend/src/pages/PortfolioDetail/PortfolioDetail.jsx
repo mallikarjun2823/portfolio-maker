@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, NavLink, Outlet } from 'react-router-dom';
+import { useParams, NavLink, Outlet } from 'react-router-dom';
 import {
   portfolioService,
   projectService,
@@ -20,7 +20,7 @@ import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
 const PortfolioDetail = () => {
   console.log('PortfolioDetail mounted');
   const { id } = useParams();
-  const navigate = useNavigate();
+  
   
   // Data states
   const [portfolio, setPortfolio] = useState(null);
@@ -142,7 +142,7 @@ const PortfolioDetail = () => {
     if (!confirm('Are you sure you want to delete this portfolio? This action cannot be undone.')) return;
     try {
       await portfolioService.deletePortfolio(id);
-      navigate('/portfolios');
+      window.location.href = '/portfolios';
     } catch (err) {
       alert('Failed to delete portfolio');
     }

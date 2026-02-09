@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { portfolioService, projectService, skillService, educationService, socialLinkService } from '../../api/services';
 import { useAuth } from '../../auth';
 import { parseFieldErrors } from '../../utils/errorParser';
@@ -11,7 +10,7 @@ import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
 import EmptyState from '../../components/EmptyState/EmptyState';
 
 const Resume = () => {
-  const navigate = useNavigate();
+  
   const { profile } = useAuth();
   const [portfolio, setPortfolio] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -207,10 +206,10 @@ const Resume = () => {
     return (
       <div className="container py-4">
         <div className="card">
-          <div className="card-body">
+              <div className="card-body">
             <h1 className="card-title">Resume & Profile</h1>
             <p className="card-text">You don't have a portfolio yet. Create one to build your resume.</p>
-            <button className="btn btn-primary" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
+                <button className="btn btn-primary" onClick={() => { window.location.href = '/portfolios'; }}>Create Portfolio</button>
           </div>
         </div>
       </div>

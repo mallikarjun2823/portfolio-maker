@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { portfolioService, projectService, skillService } from '../../api/services';
 import { parseFieldErrors } from '../../utils/errorParser';
 import Card from '../../components/Card/Card';
@@ -10,7 +9,7 @@ import EmptyState from '../../components/EmptyState/EmptyState';
 import ErrorMessage from '../../components/ErrorMessage/ErrorMessage';
 
 const Projects = () => {
-  const navigate = useNavigate();
+  
   const [portfolio, setPortfolio] = useState(null);
   const [projects, setProjects] = useState([]);
   const [skills, setSkills] = useState([]);
@@ -232,7 +231,7 @@ const Projects = () => {
           <div className="card-body">
             <h1 className="card-title">Projects & Skills</h1>
             <p className="card-text">You don't have a portfolio yet. Create one to manage your projects and skills.</p>
-            <button className="btn btn-primary" onClick={() => navigate('/portfolios')}>Create Portfolio</button>
+            <button className="btn btn-primary" onClick={() => { window.location.href = '/portfolios'; }}>Create Portfolio</button>
           </div>
         </div>
       </div>

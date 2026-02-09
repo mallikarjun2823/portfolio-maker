@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../auth';
 import { can } from '../../rbac';
 
@@ -21,7 +21,6 @@ const ProtectedRoute = ({
   fallback = null 
 }) => {
   const { user, isAuthenticated, loading } = useAuth();
-  const location = useLocation();
 
   // Show nothing while checking auth
   if (loading) {
@@ -39,7 +38,7 @@ const ProtectedRoute = ({
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   // If permission is required, check it

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import { authService } from '../api/auth.api';
 import { profileService } from '../api/profile.api';
 
@@ -25,25 +25,21 @@ export function AuthProvider({ children }) {
   /**
    * Load user profile on mount if token exists
    */
-  const loadUserProfile = useCallback(async () => {
+  const loadUserProfile = async () => {
     const token = localStorage.getItem('token');
     const username = localStorage.getItem('username');
-    
+
     if (!token || !username) {
       setLoading(false);
       return;
     }
 
     try {
-      // Set basic user info from storage
       setUser({ username });
-      
-      // Fetch full profile from backend
       const profileData = await profileService.getProfile();
       setProfile(profileData);
     } catch (error) {
       console.error('Failed to load profile:', error);
-      // Token might be invalid, clear it
       localStorage.removeItem('token');
       localStorage.removeItem('username');
       setUser(null);
@@ -51,60 +47,59 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     loadUserProfile();
-  }, [loadUserProfile]);
+  }, []);
 
   /**
    * Login handler
    */
-  const login = useCallback(async (credentials) => {
+  const login = async (credentials) => {
     const data = await authService.login(credentials);
     setUser({ username: data.username });
-    
-    // Load full profile after login
+
     try {
       const profileData = await profileService.getProfile();
       setProfile(profileData);
     } catch (error) {
       console.error('Failed to load profile after login:', error);
     }
-    
+
     return data;
-  }, []);
+  };
 
   /**
    * Logout handler
    */
-  const logout = useCallback(() => {
+  const logout = () => {
     authService.logout();
     setUser(null);
     setProfile(null);
-  }, []);
+  };
 
   /**
    * Register handler
    */
-  const register = useCallback(async (data) => {
+  const register = async (data) => {
     const result = await authService.register(data);
     return result;
-  }, []);
+  };
 
   /**
    * Refresh profile data
    */
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = async () => {
     if (!user) return;
-    
+
     try {
       const profileData = await profileService.getProfile();
       setProfile(profileData);
     } catch (error) {
       console.error('Failed to refresh profile:', error);
     }
-  }, [user]);
+  };
 
   const value = {
     user,

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { profileService } from '../../api/services';
-import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
   const [profile, setProfile] = useState({ username: '', email: '', bio: '', avatar: null });
@@ -10,7 +9,7 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
-  const navigate = useNavigate();
+  
 
   useEffect(() => {
     const load = async () => {
@@ -138,7 +137,7 @@ const Profile = () => {
               <div className="col-12 d-flex gap-2">
                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Profile'}</button>
                 <button type="button" className="btn btn-outline-secondary" onClick={cancelEdit}>Cancel Edit</button>
-                <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/')}>Back Home</button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => { window.location.href = '/'; }}>Back Home</button>
               </div>
             </form>
           )}
