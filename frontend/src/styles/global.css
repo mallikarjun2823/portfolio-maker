@@ -232,6 +232,75 @@ input, textarea, select {
   border-radius: var(--radius-md);
 }
 
+/* Typography refinements */
+html { font-size: 16px; }
+body { letter-spacing: 0.2px; }
+
+/* Improve header look (top-header) */
+.top-header {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  padding: 0.75rem 2rem;
+  align-items: center;
+}
+.page-title { color: var(--color-gray-100); font-weight: 600; }
+
+/* Brand */
+.logo-icon { background: linear-gradient(135deg, var(--color-accent-500), #5b21b6); color: white; }
+.logo-text { color: var(--color-gray-50); font-weight: 700; }
+
+/* Cards: subtle glass + borders */
+.card-component { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.04); }
+
+/* Form labels, inputs */
+.form-label { color: var(--color-gray-200); font-weight: 600; }
+.form-input { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: var(--color-gray-50); }
+.form-input::placeholder { color: rgba(255,255,255,0.6); }
+
+/* Accessibility: high contrast focus rings */
+.btn-component:focus-visible, .form-input:focus-visible { outline: 3px solid rgba(124,58,237,0.22); outline-offset: 2px; }
+
+/* Responsive spacing tweaks */
+@media (max-width: 768px) {
+  .top-header { padding: 0.5rem 1rem; }
+  .container { padding-left: var(--spacing-md); padding-right: var(--spacing-md); }
+}
+
+/* Ensure readable text on light surfaces (legacy component CSS uses --color-white) */
+.card-component,
+.login-card,
+.sidebar,
+.top-header,
+.user-dropdown,
+.btn-outline,
+.login-container .login-card,
+.card-header,
+.card-body,
+.card-footer,
+.form-input,
+input.form-input,
+textarea.form-input,
+select.form-input {
+  color: var(--color-gray-900);
+}
+
+/* Ensure form inputs show dark text when placed on white surfaces */
+input, textarea, select {
+  color: var(--color-gray-900);
+}
+
+/* Activity timeline / list items (Bootstrap .list-group) */
+.list-group {
+  background: transparent;
+}
+
+.list-group-item {
+  background: var(--color-white);
+  color: var(--color-gray-900);
+  border: 1px solid var(--color-gray-200);
+}
+
+.list-group-item .text-muted { color: var(--color-gray-600); }
+
 /* ===========================
    Scrollbar Styling
    =========================== */

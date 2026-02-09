@@ -27,6 +27,13 @@ const Profile = () => {
       }
     };
     load();
+    // If user navigated to profile with ?tab=settings or #settings, open edit mode
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'settings' || window.location.hash === '#settings') {
+        setIsEditing(true);
+      }
+    } catch (e) {}
   }, []);
 
   const handleChange = (e) => setProfile(prev => ({ ...prev, [e.target.name]: e.target.value }));

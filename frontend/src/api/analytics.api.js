@@ -10,6 +10,7 @@ export const analyticsService = {
    * @param {Object} params - Query parameters for analytics
    */
   async getAnalytics(params = {}) {
+    // Analytics endpoint expects a POST with parameters in the request body
     const response = await apiClient.post('/analytics/', params);
     return response.data;
   },

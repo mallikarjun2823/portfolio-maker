@@ -50,7 +50,7 @@ const Analytics = () => {
         end_date: endDate,
         group_by: 'day',
         metrics: ['count'],
-        entity_type: 'project',
+        entity_type: 'portfolio',
         entity_ids: [portfolio.id],
       };
 

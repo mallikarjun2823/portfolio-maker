@@ -38,9 +38,18 @@ const Layout = ({ children }) => {
   };
 
   const isActive = (path) => {
-    const pathname = window.location.pathname || '/';
-    if (path === '/') return pathname === '/';
-    return pathname.startsWith(path);
+    try {
+      const urlPath = new URL(window.location.href).pathname || '/';
+      const normalize = (p) => (p === '/' ? '/' : p.replace(/\/+$|^\/+$/g, ''));
+      const pathname = normalize(urlPath) || '/';
+      const check = normalize(path) || '/';
+      if (check === '/') return pathname === '/';
+      return pathname === check || pathname.startsWith(check + '/');
+    } catch (e) {
+      const pathname = window.location.pathname || '/';
+      if (path === '/') return pathname === '/';
+      return pathname.startsWith(path);
+    }
   };
 
   const navItems = [
@@ -51,7 +60,7 @@ const Layout = ({ children }) => {
     { path: '/profile', label: 'Profile', icon: 'settings' },
     { path: '/analytics', label: 'Analytics', icon: 'analytics' },
     { path: '/resume', label: 'Resume', icon: 'resume' },
-    { path: '/activity', label: 'Activity', icon: 'activity' },
+    myPortfolioId ? { path: '/activity', label: 'Activity', icon: 'activity' } : null,
   ].filter(Boolean);
 
   const toggleSidebar = () => {
@@ -135,7 +144,7 @@ const Layout = ({ children }) => {
 
               <div className={`user-dropdown ${userMenuOpen ? 'show' : ''}`} onClick={(e) => e.stopPropagation()}>
                 <Link to="/profile" className="user-dropdown-item">Profile</Link>
-                <Link to="/settings" className="user-dropdown-item">Settings</Link>
+                <Link to={{ pathname: '/profile', search: '?tab=settings' }} className="user-dropdown-item">Settings</Link>
                 <Link to="/analytics" className="user-dropdown-item">Analytics</Link>
                 <div className="user-dropdown-divider" />
                 <button onClick={handleLogout} className="user-dropdown-item logout">Logout</button>
