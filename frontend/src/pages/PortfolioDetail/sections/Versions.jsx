@@ -5,7 +5,7 @@ import Button from '../../../components/Button/Button';
 import EmptyState from '../../../components/EmptyState/EmptyState';
 
 export default function Versions() {
-  const { versions, isOwner, setShowVersionModal, handleVersionRevert } = useOutletContext();
+  const { versions, isOwner, setShowVersionModal, handleVersionRevert, setShowRevertModal, setRevertTarget } = useOutletContext();
 
   return (
     <div>
@@ -35,7 +35,15 @@ export default function Versions() {
                   </div>
                 </div>
                 {isOwner && (
-                  <Button variant="outline-primary" size="sm" onClick={() => handleVersionRevert(version.version_number)}>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={() => {
+                      // open the parent modal instead of immediate confirm
+                      setRevertTarget(version.version_number);
+                      setShowRevertModal(true);
+                    }}
+                  >
                     Revert to This Version
                   </Button>
                 )}

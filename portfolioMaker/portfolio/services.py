@@ -2,7 +2,7 @@ from . import models
 from urllib.parse import urlparse
 from django.db.models import Q, Max
 from rest_framework.exceptions import ValidationError
-from django.db import connection
+from django.db import connection, transaction
 from django.utils import timezone
 from datetime import datetime
 # region: Project Service
@@ -792,6 +792,39 @@ class PortfolioService:
             change_note=change_note,
             is_draft=is_draft
         )
+
+        # capture related items as a JSON snapshot (non-file fields)
+        try:
+            projects = list(models.Project.objects.filter(portfolio=portfolio).values(
+                'title', 'description', 'tech_stack', 'project_url', 'status'
+            ))
+            skills = list(models.Skill.objects.filter(portfolio=portfolio).values(
+                'name', 'proficiency_level', 'years_of_experience', 'skill_certification', 'status'
+            ))
+            education = list(models.Education.objects.filter(portfolio=portfolio).values(
+                'institution', 'degree', 'start_year', 'end_year', 'status'
+            ))
+            social_links = list(models.SocialLink.objects.filter(portfolio=portfolio).values(
+                'platform', 'url', 'status'
+            ))
+            # document files cannot be reliably serialized/restored; include metadata only
+            documents = list(models.Document.objects.filter(portfolio=portfolio).values(
+                'doc_type', 'status', 'file'
+            ))
+
+            items_snapshot = {
+                'projects': projects,
+                'skills': skills,
+                'education': education,
+                'social_links': social_links,
+                'documents': documents,
+            }
+            version.items_snapshot = items_snapshot
+            version.save()
+        except Exception:
+            # best-effort: if snapshotting related items fails, keep the version without items
+            pass
+
         return version
     
     def list_versions(self, *, portfolio):
@@ -813,7 +846,6 @@ class PortfolioService:
         version = self.get_version(portfolio=portfolio, version_number=version_number)
         if not version:
             raise ValidationError("Version not found")
-        
         # Create a snapshot of current state before reverting
         self.create_version_snapshot(
             portfolio=portfolio,
@@ -821,19 +853,79 @@ class PortfolioService:
             change_note=f"Auto-snapshot before reverting to v{version_number}"
         )
 
-        # Apply version data
-        portfolio.title = version.title
-        portfolio.summary = version.summary
-        portfolio.status = version.status
-        portfolio.save()
-        
-        # Create new version for the revert
-        self.create_version_snapshot(
-            portfolio=portfolio,
-            user=user,
-            change_note=f"Reverted to v{version_number}"
-        )
-        
+        # Apply version data and restore related items if available
+        with transaction.atomic():
+            portfolio.title = version.title
+            portfolio.summary = version.summary
+            portfolio.status = version.status
+            portfolio.save()
+
+            snapshot = getattr(version, 'items_snapshot', None)
+            if snapshot:
+                # Restore projects
+                if 'projects' in snapshot:
+                    models.Project.objects.filter(portfolio=portfolio).delete()
+                    for p in snapshot.get('projects', []):
+                        proj = models.Project.objects.create(
+                            portfolio=portfolio,
+                            title=p.get('title') or '',
+                            description=p.get('description') or '',
+                            tech_stack=p.get('tech_stack') or '',
+                            project_url=p.get('project_url') or '',
+                            status=p.get('status', models.ItemStatus.DRAFT)
+                        )
+                        self._log_activity(user=user, action='CREATE', entity_type='Project', entity_id=proj.id)
+
+                # Restore skills
+                if 'skills' in snapshot:
+                    models.Skill.objects.filter(portfolio=portfolio).delete()
+                    for s in snapshot.get('skills', []):
+                        skill = models.Skill.objects.create(
+                            portfolio=portfolio,
+                            name=s.get('name') or '',
+                            proficiency_level=s.get('proficiency_level') or models.ProficiencyLevel.BEGINNER,
+                            years_of_experience=s.get('years_of_experience') or 0,
+                            skill_certification=s.get('skill_certification') or None,
+                            status=s.get('status', models.ItemStatus.DRAFT)
+                        )
+                        self._log_activity(user=user, action='CREATE', entity_type='Skill', entity_id=skill.id)
+
+                # Restore education
+                if 'education' in snapshot:
+                    models.Education.objects.filter(portfolio=portfolio).delete()
+                    for e in snapshot.get('education', []):
+                        edu = models.Education.objects.create(
+                            portfolio=portfolio,
+                            institution=e.get('institution') or '',
+                            degree=e.get('degree') or '',
+                            start_year=e.get('start_year') or 0,
+                            end_year=e.get('end_year'),
+                            status=e.get('status', models.ItemStatus.DRAFT)
+                        )
+                        self._log_activity(user=user, action='CREATE', entity_type='Education', entity_id=edu.id)
+
+                # Restore social links
+                if 'social_links' in snapshot:
+                    models.SocialLink.objects.filter(portfolio=portfolio).delete()
+                    for sl in snapshot.get('social_links', []):
+                        link = models.SocialLink.objects.create(
+                            portfolio=portfolio,
+                            platform=sl.get('platform') or '',
+                            url=sl.get('url') or '',
+                            status=sl.get('status', models.ItemStatus.DRAFT)
+                        )
+                        self._log_activity(user=user, action='CREATE', entity_type='SocialLink', entity_id=link.id)
+
+                # Documents: only metadata was captured (file restoration not supported)
+                # Skip deleting/creating Document.file to avoid data loss.
+
+            # Create new version for the revert
+            self.create_version_snapshot(
+                portfolio=portfolio,
+                user=user,
+                change_note=f"Reverted to v{version_number}"
+            )
+
         return portfolio
 
     # === Analytics (read-only, raw SQL) ===

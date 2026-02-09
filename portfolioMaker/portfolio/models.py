@@ -268,6 +268,8 @@ class PortfolioVersion(models.Model):
     )
     change_note = models.TextField(blank=True)
     is_draft = models.BooleanField(default=False)
+    # Serialized snapshot of related items (projects, skills, education, social_links)
+    items_snapshot = models.JSONField(null=True, blank=True)
     
     class Meta:
         ordering = ['-version_number']

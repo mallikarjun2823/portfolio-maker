@@ -42,6 +42,8 @@ const PortfolioDetail = () => {
   const [showSocialLinkModal, setShowSocialLinkModal] = useState(false);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
+  const [showRevertModal, setShowRevertModal] = useState(false);
+  const [revertTarget, setRevertTarget] = useState(null);
   const [showPortfolioEditModal, setShowPortfolioEditModal] = useState(false);
   
   // Edit states
@@ -410,12 +412,23 @@ const PortfolioDetail = () => {
   };
 
   const handleVersionRevert = async (versionNumber) => {
-    if (!confirm(`Revert to version ${versionNumber}? This will restore the portfolio to that state.`)) return;
+    // Backwards-compatible: open modal
+    setRevertTarget(versionNumber);
+    setShowRevertModal(true);
+  };
+
+  const handleConfirmRevert = async () => {
+    if (!revertTarget) return;
     try {
-      await versionService.revertVersion(id, versionNumber);
+      setSubmitting(true);
+      await versionService.revertVersion(id, revertTarget);
+      setShowRevertModal(false);
+      setRevertTarget(null);
       await loadAllData();
     } catch (err) {
       alert('Failed to revert to version');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -530,6 +543,8 @@ const PortfolioDetail = () => {
         setShowSkillModal,
         setShowEducationModal,
         setShowSocialLinkModal,
+        setShowRevertModal,
+        setRevertTarget,
       }} />
 
       {/* Modals */}
@@ -981,6 +996,29 @@ const PortfolioDetail = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRevertModal && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Revert</h5>
+                <button type="button" className="btn-close" onClick={() => { setShowRevertModal(false); setRevertTarget(null); }}></button>
+              </div>
+              <div className="modal-body">
+                <p>Are you sure you want to revert to version {revertTarget}? This will restore the portfolio and recreate non-file items from that snapshot.</p>
+                <div className="alert alert-warning small">Note: document files are not restored; IDs for recreated items will change.</div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => { setShowRevertModal(false); setRevertTarget(null); }}>Cancel</button>
+                <button type="button" className="btn btn-danger" onClick={handleConfirmRevert} disabled={submitting}>
+                  {submitting ? 'Reverting...' : `Revert to v${revertTarget}`}
+                </button>
+              </div>
             </div>
           </div>
         </div>

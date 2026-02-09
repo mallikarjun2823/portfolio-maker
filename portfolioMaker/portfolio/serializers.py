@@ -335,13 +335,14 @@ class PortfolioVersionSerializer(serializers.ModelSerializer):
             'title',
             'summary',
             'status',
+            'items_snapshot',
             'created_at',
             'created_by',
             'created_by_username',
             'change_note',
             'is_draft'
         ]
-        read_only_fields = ['id', 'version_number', 'created_at', 'created_by', 'created_by_username']
+        read_only_fields = ['id', 'version_number', 'created_at', 'created_by', 'created_by_username', 'items_snapshot']
 # endregion
 
 class PortfolioSerializer(serializers.ModelSerializer):
