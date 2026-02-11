@@ -1,31 +1,12 @@
 from . import models
 from urllib.parse import urlparse
-import base64
-import os
-from django.core.files.base import ContentFile
-from django.conf import settings
-import requests
 from django.db.models import Q, Max
 from rest_framework.exceptions import ValidationError
 from django.db import connection, transaction
 from django.utils import timezone
 from datetime import datetime
 
-# Attempt to initialize Supabase client if configured
-supabase_client = None
-SUPABASE_BUCKET = None
-try:
-    SUPABASE_URL = getattr(settings, 'SUPABASE_URL', None)
-    SUPABASE_KEY = getattr(settings, 'SUPABASE_KEY', None)
-    SUPABASE_BUCKET = getattr(settings, 'SUPABASE_BUCKET', 'snapshots')
-    if SUPABASE_URL and SUPABASE_KEY:
-        try:
-            from supabase import create_client
-            supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        except Exception:
-            supabase_client = None
-except Exception:
-    supabase_client = None
+
 # region: Project Service
 class ProjectService:
     def get_visible_projects_for_user_and_portfolio(self, user, portfolio):
@@ -828,49 +809,10 @@ class PortfolioService:
             social_links = list(models.SocialLink.objects.filter(portfolio=portfolio).values(
                 'platform', 'url', 'status'
             ))
-            # capture documents: include metadata and (best-effort) base64 file contents
-            documents = []
-            for doc in models.Document.objects.filter(portfolio=portfolio):
-                doc_entry = {
-                    'doc_type': doc.doc_type,
-                    'status': doc.status,
-                }
-                try:
-                    if doc.file and hasattr(doc.file, 'open'):
-                        with doc.file.open('rb') as fh:
-                            data = fh.read()
-                        file_name = os.path.basename(doc.file.name)
-                        # If Supabase is configured, upload and store external URL instead of embedding base64
-                        if supabase_client and SUPABASE_BUCKET:
-                            try:
-                                path = f"portfolios/{portfolio.id}/versions/{next_version}/{file_name}"
-                                # upload may accept bytes or a file-like object
-                                supabase_client.storage.from_(SUPABASE_BUCKET).upload(path, data)
-                                try:
-                                    public = supabase_client.storage.from_(SUPABASE_BUCKET).get_public_url(path)
-                                    url = public.get('publicURL') or public.get('public_url') or public.get('url')
-                                except Exception:
-                                    url = None
-                                if url:
-                                    doc_entry['external_url'] = url
-                                    doc_entry['file_name'] = file_name
-                                else:
-                                    # fallback to embedding
-                                    encoded = base64.b64encode(data).decode('ascii')
-                                    doc_entry['file_name'] = file_name
-                                    doc_entry['file_content_b64'] = encoded
-                            except Exception:
-                                encoded = base64.b64encode(data).decode('ascii')
-                                doc_entry['file_name'] = file_name
-                                doc_entry['file_content_b64'] = encoded
-                        else:
-                            encoded = base64.b64encode(data).decode('ascii')
-                            doc_entry['file_name'] = file_name
-                            doc_entry['file_content_b64'] = encoded
-                except Exception:
-                    # If reading fails, skip embedding file content but keep metadata
-                    pass
-                documents.append(doc_entry)
+            # document files cannot be reliably serialized/restored; include metadata only
+            documents = list(models.Document.objects.filter(portfolio=portfolio).values(
+                'doc_type', 'status', 'file'
+            ))
 
             items_snapshot = {
                 'projects': projects,
@@ -977,34 +919,17 @@ class PortfolioService:
                         self._log_activity(user=user, action='CREATE', entity_type='SocialLink', entity_id=link.id)
 
                 # Documents: only metadata was captured (file restoration not supported)
-                # Restore documents: delete existing and recreate from snapshot where possible
+                # Skip deleting/creating Document.file to avoid data loss.
                 if 'documents' in snapshot:
                     models.Document.objects.filter(portfolio=portfolio).delete()
                     for d in snapshot.get('documents', []):
                         try:
-                            file_obj = None
-                            # Prefer external URL (Supabase) if available
-                            if d.get('external_url'):
-                                try:
-                                    resp = requests.get(d['external_url'], timeout=10)
-                                    if resp.status_code == 200:
-                                        raw = resp.content
-                                        file_obj = ContentFile(raw, name=d.get('file_name') or 'document')
-                                except Exception:
-                                    file_obj = None
-                            elif d.get('file_content_b64') and d.get('file_name'):
-                                raw = base64.b64decode(d['file_content_b64'])
-                                file_obj = ContentFile(raw, name=d['file_name'])
-
-                            doc = models.Document.objects.create(
+                            models.Document.objects.create(
                                 portfolio=portfolio,
-                                doc_type=d.get('doc_type') or 'other',
+                                doc_type=d.get('doc_type'),
                                 status=d.get('status', models.ItemStatus.DRAFT),
                             )
-                            if file_obj:
-                                doc.file.save(d['file_name'], file_obj, save=True)
                         except Exception:
-                            # best-effort: skip problematic documents
                             continue
 
             # Create new version for the revert

@@ -227,9 +227,4 @@ REST_FRAMEWORK = {
 # Note: install with `pip install django-debug-toolbar` and runserver to see the toolbar
 # For secure environments, enable the toolbar only on internal networks
 
-# Optional Supabase storage configuration for versioned document snapshots.
-# Set `SUPABASE_URL` and `SUPABASE_KEY` in the environment to enable.
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-# Bucket used to store version snapshots; default to 'snapshots'
-SUPABASE_BUCKET = os.getenv('SUPABASE_BUCKET', 'snapshots')
+# (Supabase storage configuration removed)
